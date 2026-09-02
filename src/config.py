@@ -39,10 +39,12 @@ RESULTS: Final[Path] = ROOT / "results"
 FIGURES: Final[Path] = RESULTS / "figures"
 DOCS: Final[Path] = ROOT / "docs"
 
-# Raw dataset files. We deliberately download only these two of the dataset's twelve
-# files — the others are the Medium/Large variants we are not using and are many GB.
+# Raw dataset files. The Kaggle dataset holds 18 files (~40 GB); the Large variants
+# alone are 17 GB each. We download only the three HI-Small files (~486 MB total),
+# because `kaggle datasets download` without a -f filter fetches all of them.
 TRANS_CSV: Final[Path] = DATA_RAW / "HI-Small_Trans.csv"
 PATTERNS_TXT: Final[Path] = DATA_RAW / "HI-Small_Patterns.txt"
+ACCOUNTS_CSV: Final[Path] = DATA_RAW / "HI-Small_accounts.csv"
 
 # Parquet cache. CSV parsing of ~5M rows takes tens of seconds every single run;
 # parquet reloads in about a second and preserves dtypes (notably the categoricals),

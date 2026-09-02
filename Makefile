@@ -60,6 +60,10 @@ all: check data features train eval agent-eval test
 test:
 	$(PY) -m pytest tests/ -q
 
+# NOTE: this deletes data/processed/split_boundaries.json, the "frozen" split.
+# That is safe because make_splits.py is deterministic — same input data and same
+# fractions reproduce byte-identical boundaries. The split is frozen in the sense
+# that nothing RECOMPUTES it mid-pipeline, not in the sense that it is unrecoverable.
 clean:
 	rm -rf data/processed/* results/figures/* results/*.json
 	@echo "Removed derived data and results. Raw downloads in data/raw/ kept."

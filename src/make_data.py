@@ -209,7 +209,7 @@ def load_accounts() -> pd.DataFrame:
     that. See docs/NOTES.md.
     """
     df = pd.read_csv(
-        config.DATA_RAW / "HI-Small_accounts.csv",
+        config.ACCOUNTS_CSV,
         dtype={
             "Bank Name": "string",
             "Bank ID": "string",       # leading zeros again

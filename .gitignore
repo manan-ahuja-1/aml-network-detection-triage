@@ -21,3 +21,5 @@ results/**/*.tmp
 
 # --- macOS ---
 .DS_Store
+
+docs/LEARNING_NOTES.md
