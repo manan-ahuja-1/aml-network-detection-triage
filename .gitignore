@@ -1,0 +1,23 @@
+# --- secrets ---
+# .env holds Kaggle and Anthropic credentials. Never committed. A secret pushed once
+# lives in git history forever, so this line matters more than anything else here.
+.env
+
+# --- environment ---
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# --- data ---
+# Raw and derived data are regenerable from Kaggle via `make data`, and the CSV alone
+# is hundreds of MB. The repo stays clonable; the data does not live in it.
+data/
+
+# --- results ---
+# Figures and metrics JSON ARE committed: the README reads its numbers from them, so
+# a reviewer sees the results without running anything. Only scratch output is ignored.
+results/**/*.tmp
+
+# --- macOS ---
+.DS_Store

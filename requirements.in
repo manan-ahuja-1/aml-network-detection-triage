@@ -1,0 +1,55 @@
+# Direct dependencies — human intent, with the reason each one is here.
+# The pinned lock file (requirements.txt) is generated from this via `pip freeze`.
+#
+# Python 3.13 is REQUIRED. Do not build the venv on 3.14: gensim publishes no cp314
+# wheel, and pecanpy trains its node2vec embeddings through gensim's Word2Vec, so
+# arm D (the headline result) cannot run on 3.14.
+
+# --- data handling ---
+pandas                # transaction table; groupby is the workhorse for account aggregates
+pyarrow               # parquet engine: ~10x faster reload than CSV, preserves dtypes
+numpy
+
+# --- modelling ---
+scikit-learn          # metrics (PR-AUC, precision/recall), splitting utilities.
+                      # ALSO vendors libomp.dylib, which is what scripts/fix_macos_libomp.py
+                      # borrows to make lightgbm importable without Homebrew.
+lightgbm              # the detection engine; also gives exact TreeSHAP via pred_contrib.
+                      # macOS: needs an OpenMP runtime. If `import lightgbm` raises
+                      # OSError about @rpath/libomp.dylib, run:
+                      #     python scripts/fix_macos_libomp.py
+                      # (or `brew install libomp` if you have Homebrew).
+shap                  # SHAP plots. NOTE: not load-bearing — lightgbm computes the
+                      # values natively; shap is for visualisation only.
+
+# --- graph ---
+networkx              # graph construction, PageRank, betweenness, and (>=3.0) Louvain
+                      # via nx.community.louvain_communities — no python-louvain needed
+fastnode2vec          # node2vec (numba-accelerated, gensim-backed).
+                      # Chosen over `pecanpy`: pecanpy depends on nptyping, which is
+                      # unmaintained and still references np.bool8 — removed in NumPy 2.
+                      # Since pandas 3 requires NumPy 2, pecanpy is unusable here without
+                      # patching a third-party package, and one vendored patch (lightgbm)
+                      # is already one more than ideal.
+                      # Also rejected: the `node2vec` PyPI package — pure Python, far too
+                      # slow at this graph size.
+gensim                # Word2Vec backend that fastnode2vec trains embeddings with.
+                      # This is why the venv MUST be Python 3.13 — no cp314 wheel exists.
+
+# --- agent + RAG (week 2) ---
+anthropic             # triage agent
+chromadb              # vector store for the AML typology knowledge base
+
+# --- app + figures ---
+streamlit             # the demo that gets deployed for the CV link
+matplotlib
+seaborn
+
+# --- utilities ---
+python-dotenv         # loads .env so credentials never live in code
+kaggle                # dataset download; reads KAGGLE_USERNAME / KAGGLE_KEY from env
+tqdm                  # progress bars on the long graph/embedding steps
+
+# --- dev ---
+pytest                # the leakage and split assertions from the verification section
+ipykernel             # lets the EDA notebook use this venv
