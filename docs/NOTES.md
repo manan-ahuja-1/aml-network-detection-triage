@@ -115,3 +115,122 @@ available (so `python-louvain` is not needed), LightGBM `pred_contrib` confirmed
 
 **Open / next:** Kaggle auth, then Day 1 — download, parquet conversion, and the
 three go/no-go checks (time span, `Patterns.txt` format, account-ID uniqueness).
+
+---
+
+## Day 1 — Data, and three go/no-go checks
+
+`HI-Small_Trans.csv` (454 MB, **5,078,345** transactions), `HI-Small_Patterns.txt`,
+and `HI-Small_accounts.csv`. Downloaded selectively: the full dataset is ~40 GB
+(the Large variants are 17 GB each), the three HI-Small files are ~486 MB.
+
+Kaggle auth: `kaggle auth login` OAuth flow worked; credentials cached to
+`~/.kaggle/credentials.json` (mode 600). No secret in the repo.
+
+### Check 1 — time span: PASSED, but with a trap
+
+Raw span is 2022-09-01 to 2022-09-18 (17.7 days). **The data is not uniform across
+it.** Legitimate transaction generation stops after 2022-09-10, while injected
+laundering patterns continue to 09-18:
+
+| period | rows | laundering | rate |
+|---|---|---|---|
+| Sept 1–10 | 5,077,237 | 4,522 | 0.089% |
+| **Sept 11–18** | **1,108** | **655** | **59.1%** |
+
+A test split covering that tail would be scored on a region where the majority class
+is laundering. PR-AUC would have been inflated by a pure artifact of the simulator,
+and it is exactly what a reviewer plotting label rate over time would find first.
+
+**Decision: truncate at 2022-09-11 (exclusive).** Costs 0.02% of rows and 12.7% of
+positives. Reduces the train→test base-rate shift from 2.3x to 1.5x.
+`tests/test_splits.py::test_tail_is_excluded` enforces it.
+
+### Check 2 — `Patterns.txt` format: PASSED, fully
+
+370 BEGIN/END blocks, perfectly balanced, 3,209 transaction rows, all exactly 11
+fields, zero unexpected lines. **Joins back to the transactions table at 100.00%**
+on `(timestamp, from_id, to_id, amount_paid)`.
+
+All eight typologies present and near-balanced — CYCLE 54, GATHER-SCATTER 51,
+BIPARTITE 49, FAN-OUT 48, SCATTER-GATHER 44, STACK 43, RANDOM 41, FAN-IN 40.
+That balance is what makes macro-F1 over 8 classes meaningful. **A7 and B5 are fully
+unlocked.**
+
+### Check 3 — account identity: FAILED as stated, fixed
+
+Account Number alone is **not unique**. Eight account numbers exist at two different
+banks owned by *different entities* (e.g. `80A7FD400` is a Partnership at Australia
+Bank #44 and a Corporation at Australia Bank #47). Keyed on account number alone,
+those become one graph node fusing two unrelated histories.
+
+`(Bank ID, Account Number)` is provably unique: 518,581 composite keys for 518,581
+rows. **Node identity is `bank_id:account_number`**, built once in
+`make_data.py::node_id`.
+
+### Cold-start: NOT a problem (earlier concern was wrong)
+
+The 18-day span made cold-start look like a serious risk for arms C/D. Measured, it
+is not: 512,713 of 518,581 accounts (98.9%) appear in the training window.
+
+- val: 99.8% of rows have both counterparties known; 97.2% for laundering rows
+- test: 99.8% both known; 96.1% for laundering rows
+
+Arms C and D are safe.
+
+### Two data traps neutralised in `make_data.py`
+
+1. **Duplicate column names.** The CSV header names two columns `Account`. pandas
+   silently mangles the second to `Account.1`. Columns are renamed *positionally*.
+2. **Leading zeros in bank IDs** (`010`, `021174`). Read as int they become 10 and
+   21174 and every join against the accounts table silently returns nothing. All
+   identifier columns are read as `string`.
+
+### `HI-Small_accounts.csv` — not in the original plan
+
+518,581 accounts → **166,207 entities**, with an entity type in the name.
+
+- **38.2% of entities hold more than one account**
+- **38.1% of entities hold accounts at more than one bank** (max: 1,185 banks)
+- Types (by account): Partnership 189,683 · Corporation 172,351 · Sole Proprietorship
+  149,048 · Country 6,692 · Individual 740 · Direct 67
+
+This partially **removes a limitation §B7 assumed was unavoidable** ("no
+customer-vs-account entity resolution"). Real AML investigates a customer holding
+many accounts, not an isolated account. Opens up entity-level features and an
+entity-level graph. To be exploited on Day 2/3.
+
+### ACH is a simulator artifact — must be measured, not silently exploited
+
+| | share of rows | share of laundering |
+|---|---|---|
+| ACH | 11.8% | **84.7%** |
+| Wire + Reinvestment | 12.9% | **0 of 652,911 rows** |
+
+3,208 of 3,209 labelled pattern transactions are ACH. The naive rule *"flag every
+ACH"* alone gets **84.7% recall at 0.64% precision**.
+
+Real laundering is not 85% ACH; this will not transfer. Consequences:
+1. Added **arm R** (rules baseline) to `config.ARMS` — real AML stacks begin with a
+   rules engine, so this is both domain-authentic and the honest floor every model
+   arm must clear.
+2. Goes in Limitations prominently.
+3. Plan a variant without `payment_format` to quantify how much performance depends
+   on the artifact.
+
+### Frozen numbers
+
+- **5,077,237** transactions after truncation; **4,522** laundering; **1 in 1,123**
+- Splits (persisted to `data/processed/split_boundaries.json`):
+  | split | rows | positives | rate |
+  |---|---|---|---|
+  | train | 3,046,186 | 2,296 | 0.0754% |
+  | val | 1,015,300 | 1,083 | 0.1067% |
+  | test | 1,015,751 | 1,143 | 0.1125% |
+- 15 currencies; cross-currency is 1.42% of rows. `FX_TO_USD` populated with
+  **approximate, static, mid-2022 rates** — stated as such in config and README.
+- Parquet: 454 MB CSV → 147 MB; loads in ~1s vs ~13s, 0.58 GB in memory.
+
+**Next (Day 2):** arms R/A/B — transaction features, then account aggregates plus the
+B2 typology features (structuring bands, pass-through ratio, dormancy burst,
+payment-format groups).

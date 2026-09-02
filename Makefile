@@ -9,7 +9,7 @@
 
 PY := ./.venv/bin/python
 
-.PHONY: help check data features train eval agent-eval all clean fix-libomp
+.PHONY: help check data features train eval agent-eval all clean fix-libomp test
 
 # Default target: running bare `make` prints the menu rather than doing something
 # unexpected and expensive.
@@ -17,7 +17,7 @@ help:
 	@echo ""
 	@echo "  make check       Verify interpreter, dependencies and directories"
 	@echo "  make fix-libomp  Repair LightGBM's OpenMP link (macOS, no Homebrew)"
-	@echo "  make data        Download the dataset and build the parquet cache"
+	@echo "  make data        Build the parquet cache and freeze the temporal split"
 	@echo "  make features    Build all four feature arms"
 	@echo "  make train       Train arms A-D"
 	@echo "  make eval        Evaluate the engine, write results/engine.json"
@@ -38,7 +38,8 @@ fix-libomp:
 # success having produced nothing.
 
 data:
-	@echo "NOT IMPLEMENTED: src/make_data.py (Day 1)" && exit 1
+	$(PY) src/make_data.py
+	$(PY) src/make_splits.py
 
 features:
 	@echo "NOT IMPLEMENTED: src/features_*.py (Days 2-4)" && exit 1
@@ -54,7 +55,10 @@ agent-eval:
 
 # The reproducibility claim in the README rests on this target: raw data in,
 # every reported number out, no manual steps.
-all: check data features train eval agent-eval
+all: check data features train eval agent-eval test
+
+test:
+	$(PY) -m pytest tests/ -q
 
 clean:
 	rm -rf data/processed/* results/figures/* results/*.json

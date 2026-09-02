@@ -87,18 +87,49 @@ TEST_FRACTION: Final[float] = 0.20
 SPLIT_BOUNDARIES_JSON: Final[Path] = DATA_PROCESSED / "split_boundaries.json"
 
 # ---------------------------------------------------------------------------
+# Data truncation — MEASURED ON DAY 1
+# ---------------------------------------------------------------------------
+# The raw file spans 2022-09-01 to 2022-09-18, but legitimate traffic generation
+# STOPS after 2022-09-10 while injected laundering patterns continue. The result is
+# a tail of 1,108 transactions of which 655 are laundering — a 59% base rate.
+#
+# Left in place, a test split covering that region would be scored on data where the
+# majority class is laundering, inflating PR-AUC by a pure artifact of the simulator.
+# Truncating costs 0.02% of rows and 12.7% of positives, and reduces the train->test
+# base-rate shift from 2.3x to 1.5x.
+DATA_CUTOFF = "2022-09-11"  # exclusive; keep 2022-09-01 .. 2022-09-10
+
+# ---------------------------------------------------------------------------
 # Currency normalisation — POPULATED ON DAY 1
 # ---------------------------------------------------------------------------
 # The dataset records Amount Paid and Amount Received in potentially DIFFERENT
-# currencies. Feeding raw amounts to the model compares 500 JPY with 500 GBP as
-# equal, so both are converted to USD before any amount feature is computed.
+# currencies (1.42% of rows). More importantly the currency varies BETWEEN rows, so
+# without normalisation an amount feature compares 500 Yen with 500 US Dollars as
+# equal. Both amounts are converted to USD before any amount feature is computed.
 #
-# These are STATIC rates, not historical ones. That is a stated simplification: the
-# dataset is synthetic and has no real FX time series behind it. The README says so
-# explicitly rather than implying a precision we do not have.
-#
-# Filled on Day 1 once we have seen the actual set of currencies in the data.
-FX_TO_USD: dict[str, float] = {}
+# *** THESE ARE APPROXIMATE, STATIC, MID-2022 RATES. ***
+# They are not historical series and are not precise. That is a deliberate, stated
+# simplification: the data is synthetic and has no real FX series behind it, and the
+# features that matter (order-of-magnitude of an amount, structuring bands) are
+# robust to a few percent of FX error. The README states this explicitly rather than
+# implying a precision we do not have.
+FX_TO_USD: dict[str, float] = {
+    "US Dollar": 1.0,
+    "Euro": 1.05,
+    "UK Pound": 1.20,
+    "Swiss Franc": 1.05,
+    "Canadian Dollar": 0.75,
+    "Australian Dollar": 0.68,
+    "Saudi Riyal": 0.267,
+    "Shekel": 0.29,
+    "Brazil Real": 0.19,
+    "Yuan": 0.145,
+    "Mexican Peso": 0.050,
+    "Ruble": 0.016,
+    "Rupee": 0.0125,
+    "Yen": 0.0072,
+    "Bitcoin": 20000.0,
+}
 
 # ---------------------------------------------------------------------------
 # Alert construction (A6) — the seam between the engine and the agent
@@ -128,7 +159,13 @@ PRECISION_AT_K: Final[tuple[int, ...]] = (50, 100, 500)
 # a naive baseline looks like; arm B is the real control, because it already contains
 # every non-graph account aggregate. Without it, most of the apparent "graph lift" is
 # just the effect of aggregating per account at all.
+#
+# Arm R was added on Day 1 after EDA: "flag every ACH" alone achieves 84.7% recall
+# at 0.64% precision, because the simulator injects laundering almost exclusively
+# as ACH. Real AML stacks start with a rules engine, so a rules baseline is both
+# domain-authentic and the honest floor every model arm must clear.
 ARMS: Final[dict[str, str]] = {
+    "R": "rules baseline: flag every ACH (no model at all)",
     "A": "transaction attributes only",
     "B": "A + account aggregates + typology features (no graph topology)",
     "C": "B + graph topology features",
