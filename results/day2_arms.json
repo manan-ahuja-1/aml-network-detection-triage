@@ -1,0 +1,141 @@
+{
+  "arm_R": {
+    "arm": "R",
+    "description": "rules baseline: flag every ACH (no model at all)",
+    "split": "val",
+    "n": 1015300,
+    "positives": 1083,
+    "alerts_raised": 122876,
+    "alerts_share_of_all": 0.12102432778489117,
+    "true_positives": 925,
+    "precision": 0.007527914320127609,
+    "recall": 0.8541089566020313,
+    "pr_auc_degenerate": 0.006585278074212147
+  },
+  "arms": {
+    "A": {
+      "arm": "A",
+      "description": "transaction attributes only",
+      "n_features": 11,
+      "best_iteration": 139,
+      "train_seconds": 23.2,
+      "val": {
+        "n": 1015300,
+        "positives": 1083,
+        "base_rate": 0.0010666797990741652,
+        "pr_auc": 0.052669055672317416,
+        "roc_auc": 0.9143835411438498,
+        "precision_at_k": {
+          "50": {
+            "k": 50,
+            "hits": 15,
+            "precision": 0.3,
+            "recall": 0.013850415512465374
+          },
+          "100": {
+            "k": 100,
+            "hits": 20,
+            "precision": 0.2,
+            "recall": 0.018467220683287166
+          },
+          "500": {
+            "k": 500,
+            "hits": 72,
+            "precision": 0.144,
+            "recall": 0.0664819944598338
+          }
+        },
+        "alerts_at_80_recall": {
+          "target_recall": 0.8,
+          "achievable": true,
+          "threshold": 0.001943455594524569,
+          "precision": 0.015533180450050164,
+          "recall": 0.8005540166204986,
+          "alerts_to_review": 55816
+        }
+      },
+      "top_features": {
+        "hour": 45766.976259708405,
+        "paid_usd": 44951.45221185684,
+        "recv_usd": 37466.53784620762,
+        "day_of_week": 36673.162348032,
+        "payment_format": 27395.941806793213,
+        "is_cross_currency": 10151.320875763893,
+        "is_same_bank": 2082.498587369919,
+        "is_self_transaction": 1821.18942797184,
+        "payment_currency": 1701.1194614171982,
+        "receiving_currency": 1022.9082715511322,
+        "amount_spread_usd": 0.0
+      }
+    },
+    "B": {
+      "arm": "B",
+      "description": "A + account aggregates + typology features (no graph topology)",
+      "n_features": 87,
+      "best_iteration": 1961,
+      "train_seconds": 522.3,
+      "val": {
+        "n": 1015300,
+        "positives": 1083,
+        "base_rate": 0.0010666797990741652,
+        "pr_auc": 0.18147700346147164,
+        "roc_auc": 0.9366434892820371,
+        "precision_at_k": {
+          "50": {
+            "k": 50,
+            "hits": 44,
+            "precision": 0.88,
+            "recall": 0.040627885503231764
+          },
+          "100": {
+            "k": 100,
+            "hits": 88,
+            "precision": 0.88,
+            "recall": 0.08125577100646353
+          },
+          "500": {
+            "k": 500,
+            "hits": 178,
+            "precision": 0.356,
+            "recall": 0.16435826408125578
+          }
+        },
+        "alerts_at_80_recall": {
+          "target_recall": 0.8,
+          "achievable": true,
+          "threshold": 5.116751740426602e-07,
+          "precision": 0.009782682282851533,
+          "recall": 0.8005540166204986,
+          "alerts_to_review": 88626
+        }
+      },
+      "top_features": {
+        "from_out_n_currencies": 171850.8719104454,
+        "is_cross_currency": 124466.33645059727,
+        "from_out_txn_per_day": 86533.74018098973,
+        "from_out_counterparties_per_txn": 81666.17110792361,
+        "from_gap_burstiness": 48888.57286076434,
+        "to_median_hours_to_forward": 36945.79501264356,
+        "from_layering_format_share": 36878.60630432516,
+        "to_out_n_currencies": 29219.425343574956,
+        "to_out_std_usd": 26441.33149297163,
+        "paid_usd": 17367.122621720657,
+        "recv_usd": 17283.216451488435,
+        "from_flow_through_ratio": 15973.715178407729,
+        "from_net_flow_usd": 15476.218537412584,
+        "to_in_txn_per_day": 13209.872674748302,
+        "from_median_hours_to_forward": 12206.142499318346,
+        "to_median_gap_hours": 12118.542325159535,
+        "from_out_n": 11939.437712816522,
+        "payment_format": 11043.529278373346,
+        "from_in_n_formats": 10876.120104691014,
+        "is_self_transaction": 9574.67790770717,
+        "to_in_n_banks": 9446.34363812022,
+        "from_retention_ratio": 9248.857653867453,
+        "to_in_n_counterparties": 8631.731167024001,
+        "from_out_n_counterparties": 8401.272389182821,
+        "to_in_active_days": 8356.385832799599
+      }
+    }
+  }
+}

@@ -234,3 +234,108 @@ Real laundering is not 85% ACH; this will not transfer. Consequences:
 **Next (Day 2):** arms R/A/B — transaction features, then account aggregates plus the
 B2 typology features (structuring bands, pass-through ratio, dormancy burst,
 payment-format groups).
+
+---
+
+## Day 2 — Arms R, A, B
+
+### Headline (validation split; test untouched)
+
+| arm | features | PR-AUC | P@100 | ROC-AUC | best iter |
+|---|---|---|---|---|---|
+| **R** rules: flag every ACH | 0 | — | 0.75% | — | — |
+| **A** transaction only | 11 | 0.0527 | 20.0% | 0.9144 | 139 |
+| **B** + account/typology/entity | 87 | **0.1815** | **88.0%** | 0.9366 | 1,961 |
+
+**Arm B lifts PR-AUC 3.44x over arm A** (0.0527 → 0.1815) and takes precision@100
+from 20% to 88%. Arm R catches 85.4% of laundering but at 0.75% precision — 133 alerts
+reviewed per real case.
+
+### The ROC-AUC demonstration (better than any argument)
+
+Arm A ROC-AUC **0.9144**, arm B **0.9366** — nearly identical, both "excellent".
+Their PR-AUCs differ by **3.44x**. ROC-AUC would have reported these two models as
+near-equivalent when one is dramatically more useful. Keep both columns in the README:
+it demonstrates the metric argument instead of asserting it.
+
+### scale_pos_weight was actively harmful — measured, not assumed
+
+The first run produced arm B *worse* than arm A, stopping after 1 boosting round.
+Cause was class reweighting. On arm A:
+
+| setting | best iter | PR-AUC |
+|---|---|---|
+| `scale_pos_weight=1325` (true ratio) | 1 | 0.0119 |
+| `is_unbalance=True` | 1 | 0.0119 |
+| `scale_pos_weight=36` (sqrt) | 1 | 0.0464 |
+| **none** | **62** | **0.0495** |
+
+The build plan called for class weights; standard advice, wrong here. Reweighting fixes
+**calibration** — it stops the loss ignoring a rare class when you need trustworthy
+probabilities. PR-AUC uses only the **order** of scores. Multiplying positive gradients
+by 1,325 distorts every split so badly the model wrecks its own ranking chasing
+calibration we never consume.
+
+`min_data_in_leaf` mattered as much. With 2,296 positives in 3M rows a small leaf
+memorises a few laundering rows, validation AP spikes spuriously, and early stopping
+fires on the spike. Arm B: `20` → stops at iter 5 (0.127); `100` → iter 1 (0.091);
+`300` → 1,961 iterations (0.182).
+
+### Bug: the entity join matched nothing (100% NaN, silently)
+
+`HI-Small_Trans.csv` zero-pads bank IDs (`010`, `03208`); `HI-Small_accounts.csv` does
+not (`10`, `3208`). The composite keys had **zero overlap** between files, so every
+entity feature arrived as NaN — in the model, contributing nothing, and silent about
+it. Account numbers matched 100%, which is what made it easy to miss.
+
+Fixed in `make_data.py::node_id` by stripping leading zeros. Verified: no two bank IDs
+collide when normalised, the canonical composite stays unique across all 518,581
+accounts, and 100.00% of transaction accounts then join.
+Regression test: `tests/test_leakage.py::test_entity_features_actually_join`.
+
+**Second instance of the same class of bug this project has hit: a failed join produces
+NaN, not an error.** Both were caught only because the module printed a null rate.
+
+### What the model actually uses (arm B, top gain)
+
+1. `from_out_n_currencies` — currency diversity of the sender
+2. `is_cross_currency`
+3. `from_out_txn_per_day` — velocity
+4. `from_out_counterparties_per_txn`
+5. `from_gap_burstiness` — dormant-then-active
+6. `to_median_hours_to_forward` — **the pass-through timing feature**
+7. `from_layering_format_share`
+
+Two things worth noting. **Time-to-forward ranks high on both sides** even though the
+static `flow_through_ratio` tested weak on Day 1 — the *speed* of forwarding carries the
+mule signal, not the in/out balance. The typology reasoning was right; the first
+formulation of it was not.
+
+And **`payment_format` falls from #5 in arm A to outside the top 6 in arm B**: given
+behavioural features, the model leans less on the ACH artifact. Worth quantifying
+properly on Day 5 with a no-`payment_format` variant.
+
+`amount_spread_usd` has gain **0** — never used. It is non-zero only on the 1.42% of
+cross-currency rows, and `is_cross_currency` captures that better. Kept (a never-split
+feature costs nothing) but noted.
+
+### Honest nuance: the arms cross over on the PR curve
+
+Alerts needed for **80% recall**: arm A **55,816**, arm B **88,626**. Arm B needs *more*.
+
+Not a bug — the curves cross. Arm B is far better at the **top** of the ranking (88% of
+its first 100 alerts are real vs 20%), while arm A is more precise out in the
+high-recall tail. Since compliance teams work the top of a capacity-limited queue, arm B
+is the operationally better model, and this is a concrete argument for reporting
+**precision@k** rather than a single fixed-recall figure. Reported rather than hidden.
+
+### Verification
+
+10 leakage tests pass: no future data in account features, cold-start rows are NaN not
+zero (train cold-start exactly 0%), hand-recomputed aggregates match the table, the
+label never reaches the feature matrix, row counts match the frozen split, and the
+entity join covers >99%.
+
+**Next (Day 3):** arm C — multi-hop graph topology only (PageRank, reverse-PageRank,
+sampled betweenness, Louvain, cycles). Degree-like counts already live in arm B by
+design, so arm C must earn its lift from structure a groupby cannot produce.
