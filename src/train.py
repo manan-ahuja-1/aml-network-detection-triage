@@ -90,7 +90,11 @@ def train_arm(arm: str, frame: pd.DataFrame) -> dict:
     dval = lgb.Dataset(X_val, label=y_val, categorical_feature=categorical,
                        reference=dtrain, free_raw_data=False)
 
-    started = time.time()
+    # monotonic(), not time(): on macOS the monotonic clock pauses while the
+    # machine sleeps, so a laptop lid closed mid-run does not turn a 20-minute
+    # training into a reported 21 hours. This bit us once — arm C's first run
+    # recorded 77,896s of wall clock across an overnight suspend.
+    started = time.monotonic()
     booster = lgb.train(
         params, dtrain,
         num_boost_round=NUM_BOOST_ROUND,
@@ -100,7 +104,7 @@ def train_arm(arm: str, frame: pd.DataFrame) -> dict:
             lgb.log_evaluation(period=200),
         ],
     )
-    elapsed = time.time() - started
+    elapsed = time.monotonic() - started
 
     scores = booster.predict(X_val, num_iteration=booster.best_iteration)
     summary = metrics.summarise(y_val.to_numpy(), scores, config.PRECISION_AT_K)
@@ -138,7 +142,7 @@ def train_arm(arm: str, frame: pd.DataFrame) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--arms", default="A,B", help="comma-separated arms to train")
+    parser.add_argument("--arms", default="A,B,C", help="comma-separated arms to train")
     args = parser.parse_args()
 
     frame = splits.load_transactions()
@@ -149,11 +153,21 @@ def main() -> int:
     print(f"  precision {rules['precision']*100:.4f}%   recall {rules['recall']*100:.2f}%   "
           f"alerts {rules['alerts_raised']:,}")
 
-    results = {"arm_R": rules, "arms": {}}
-    for arm in args.arms.split(","):
-        results["arms"][arm] = train_arm(arm.strip(), frame)
+    out = config.RESULTS / "arms.json"
+    # Merge rather than overwrite: retraining one arm should not discard the others,
+    # which each cost several minutes. Arms are compared under identical
+    # hyperparameters, so previously-trained arms stay valid as long as PARAMS is
+    # unchanged — the stored params below make that checkable.
+    results = json.loads(out.read_text()) if out.exists() else {"arms": {}}
+    results["arm_R"] = rules
+    results.setdefault("arms", {})
+    results["params"] = {k: v for k, v in PARAMS.items() if not isinstance(v, dict)}
+    results["num_boost_round"] = NUM_BOOST_ROUND
+    results["early_stopping"] = EARLY_STOPPING
 
-    out = config.RESULTS / "day2_arms.json"
+    for arm in args.arms.split(","):
+        results["arms"][arm.strip()] = train_arm(arm.strip(), frame)
+    results["arms"] = {k: results["arms"][k] for k in sorted(results["arms"])}
     out.write_text(json.dumps(results, indent=2))
 
     print(f"\n{'=' * 70}\nSUMMARY (validation)\n{'=' * 70}")

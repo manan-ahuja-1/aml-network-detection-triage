@@ -23,6 +23,27 @@ fixed number of alerts per day, so we report precision@k for k ∈ {50, 100, 500
 (`config.PRECISION_AT_K`) alongside a cost-sensitive threshold whose assumed cost
 ratio is stated and sensitivity-tested rather than asserted.
 
+**Class reweighting is deliberately not used, against standard advice.** The obvious
+move at a 1-in-1,123 base rate is `scale_pos_weight` or `is_unbalance`. Measured on
+arm A, it is actively harmful:
+
+| setting | best iteration | PR-AUC |
+|---|---|---|
+| `scale_pos_weight=1325` (true ratio) | 1 | 0.0119 |
+| `is_unbalance=True` | 1 | 0.0119 |
+| `scale_pos_weight=36` (sqrt of ratio) | 1 | 0.0464 |
+| **none** | **62** | **0.0495** |
+
+Reweighting exists to fix *calibration* — to stop the loss ignoring a rare class when
+you need trustworthy probabilities. PR-AUC consumes only the *order* of scores, never
+their values. Multiplying positive gradients by 1,325 distorts every split so severely
+that the model destroys its own ranking chasing calibration the metric never reads.
+
+`min_data_in_leaf=300` is load-bearing for the same reason. With 2,296 positives in 3M
+rows, a small leaf memorises a handful of them, validation average-precision spikes
+spuriously, and early stopping fires on the spike: arm B halts at iteration 5 with
+`min_data_in_leaf=20`, and runs 1,961 iterations at 300.
+
 **The test set is scored once.** Thresholds, hyperparameters and prompts are all
 tuned on validation. A test set consulted repeatedly is a training set with extra
 steps.
@@ -139,6 +160,18 @@ receiver). pandas silently mangles the second to `Account.1`. Columns are rename
 **Leading zeros in bank IDs.** Bank IDs look like `010` and `021174`. Parsed as
 integers they become `10` and `21174`, and every join against the accounts table
 returns nothing — with no error. All identifier columns are read as `string`.
+
+**Bank IDs are formatted differently in the two source files.** `HI-Small_Trans.csv`
+zero-pads them (`010`, `03208`); `HI-Small_accounts.csv` does not (`10`, `3208`). A
+composite key built without normalising matched *nothing* across the two files, so
+every entity feature arrived as NaN — present in the model, contributing nothing, and
+silent about it. Account numbers matched 100%, which is what made it easy to miss.
+`make_data.py::node_id` strips leading zeros; verified that no two bank IDs collide
+when normalised and that the canonical key stays unique across all 518,581 accounts.
+
+This was the second silent-NaN join failure in the project. Both were caught only
+because the module printed a null rate rather than trusting the join. That diagnostic
+habit is now standard here.
 
 ### 4.4 Currency normalisation
 

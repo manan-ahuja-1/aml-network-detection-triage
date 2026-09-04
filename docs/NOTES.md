@@ -339,3 +339,111 @@ entity join covers >99%.
 **Next (Day 3):** arm C — multi-hop graph topology only (PageRank, reverse-PageRank,
 sampled betweenness, Louvain, cycles). Degree-like counts already live in arm B by
 design, so arm C must earn its lift from structure a groupby cannot produce.
+
+---
+
+## Day 3 — Arm C: multi-hop graph topology
+
+### Headline (validation; test still untouched)
+
+| arm | features | PR-AUC | P@50 | P@100 | P@500 |
+|---|---|---|---|---|---|
+| **R** rules: flag every ACH | 0 | — | — | 0.75% | — |
+| **A** transaction only | 11 | 0.0527 | 30% | 20% | 14.4% |
+| **B** + account/typology/entity | 87 | 0.1815 | 88% | 88% | 35.6% |
+| **C** + multi-hop graph | 103 | **0.1938** | **94%** | 88% | **39.6%** |
+
+**Arm C lifts PR-AUC 6.8% over arm B** (0.1815 → 0.1938). Modest, and reported as
+modest. The thesis "laundering is relational" is *supported but not dramatically* at
+the transaction level, once the baseline already contains per-account aggregation.
+
+Where it helps most is the top of the queue — P@50 88% → 94%, P@500 35.6% → 39.6% —
+which is the regime a capacity-limited compliance team actually works in.
+
+### The graph is far smaller than the transaction table suggests
+
+2.5M non-self transactions collapse to **406,998 nodes / 569,215 unique directed
+edges**. Average degree 2.80, density 3.4e-06, 28,326 weakly connected components
+(largest holds 84% of nodes). Only **1.90% of accounts sit on a cycle**.
+
+Runtimes: PageRank 7.7s · betweenness (k=500) **300s** · core/SCC/WCC 11s · Louvain
+46s (33,300 communities). Cached to `graph_features.parquet` with the `train_end`
+boundary stored alongside, so a stale cache is rejected rather than silently reused.
+
+### The finding: PageRank degenerates toward degree on a sparse graph
+
+The arm-boundary test flagged `to_pagerank` — arm C's #2 feature by gain. Two separate
+things came out of investigating it.
+
+**1. The test itself was measuring wrong.** It correlated features at the TRANSACTION
+level, which weights each account by how often it transacts and inflates correlations
+toward high-activity accounts. Reverse-PageRank read **1.0000** against degree that
+way versus **0.993** per account. The account is the unit these features are defined
+on, so it is the unit the check must use. Fixed.
+
+**2. Reverse-PageRank really is degree here.** Account-level correlations:
+
+| feature | vs degree | verdict |
+|---|---|---|
+| `reverse_pagerank` | **0.993** (out-degree) | essentially degree — **dropped** |
+| `pagerank` | 0.822 (in-degree) | correlated but distinct — kept |
+| `core_number` | 0.069 | genuinely independent |
+| `betweenness` | 0.010 | genuinely independent |
+
+With average degree 2.80, 31.8% of nodes having no in-edges, and 28,326 disconnected
+components, the random surfer barely propagates and reverse-PageRank collapses onto an
+out-degree count. Degree already lives in arm B, so keeping it would have let arm C
+claim a "multi-hop" lift for something a groupby produces.
+
+PageRank is kept on evidence: r=0.822 is high but it takes 212,648 distinct values and
+varies *within* each degree bucket, so it carries information degree does not. It still
+ranks #5 by gain in the final model.
+
+**Dropping reverse-PageRank IMPROVED arm C: 0.1888 → 0.1938.** The stricter, more
+defensible arm is also the better one — a redundant near-duplicate of an existing
+feature was costing the model rather than helping it.
+
+### Standalone graph signal (train accounts, before modelling)
+
+| feature | top-decile dirty rate | vs base |
+|---|---|---|
+| `in_cycle` | 4.77% on-cycle vs 0.70% off | **6.8x** |
+| `pagerank` | 1.97% | 2.53x |
+| `betweenness` | 1.60% | 2.06x |
+| `core_number` | 1.60% | 2.05x |
+| `louvain_community_size` | 1.02% | 1.31x |
+
+`in_cycle` is by far the strongest structural signal and maps directly to the CYCLE
+typology — but it fires on only 1.9% of accounts, which bounds its contribution. This
+predicted the modest overall lift before training confirmed it.
+
+### The third account state, now modelled
+
+Day 2 assumed two account states; there are three. **105,715 accounts (20.6%) appear in
+training but have no graph position** — they only ever transacted with themselves
+(18% of training rows are self-transfers, mostly Reinvestment). They have arm B
+aggregates but NaN topology, which is genuinely different from a never-seen account.
+`is_in_graph` makes the distinction learnable.
+
+Self-loops are excluded from the graph: they inflate centrality while carrying no
+relational information, and `is_self_transaction` already captures the behaviour in
+arm A.
+
+### Bug: training time reported as 21.6 hours
+
+Arm C's first run recorded `train_seconds: 77896`. The machine suspended mid-run and
+`time.time()` counted the sleep. Switched to `time.monotonic()`, which pauses during
+system sleep on macOS, and nulled the bogus value in `results/arms.json` rather than
+leave a number that could not be defended.
+
+### Verification
+
+22 tests pass. New this day: the graph contains exactly the training-window edge set
+(exact equality, not a subset check), no self-loops, graph nodes are a subset of
+training accounts, `is_in_graph` separates state 2 from state 3, arm C is a strict
+column-wise superset of arm B, and no arm C feature correlates >0.99 with degree at the
+account level.
+
+**Next (Day 4):** arm D — node2vec embeddings on `G_train`. Given how sparse this graph
+is and how far PageRank degenerated toward degree, the honest expectation for embeddings
+is another modest lift, not a step change.

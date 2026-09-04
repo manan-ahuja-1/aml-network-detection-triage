@@ -25,6 +25,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config  # noqa: E402
 import features_account  # noqa: E402
+import features_graph  # noqa: E402
 import features_txn  # noqa: E402
 import features_typology  # noqa: E402
 import splits  # noqa: E402
@@ -39,8 +40,8 @@ def build_arm(arm: str, frame: pd.DataFrame | None = None):
     for val/test rows — the leak-free rule (A1). The training frame is selected here
     rather than trusted from the caller so the rule cannot be bypassed by accident.
     """
-    if arm not in {"A", "B"}:
-        raise ValueError(f"arm {arm!r} is not built yet (C is Day 3, D is Day 4)")
+    if arm not in {"A", "B", "C"}:
+        raise ValueError(f"arm {arm!r} is not built yet (D is Day 4)")
 
     if frame is None:
         frame = splits.load_transactions()
@@ -50,7 +51,10 @@ def build_arm(arm: str, frame: pd.DataFrame | None = None):
     parts = [features_txn.build(frame)]
     categorical = list(features_txn.CATEGORICAL)
 
-    if arm == "B":
+    # Arms are strictly NESTED: C contains all of B, which contains all of A. That is
+    # what makes the ablation interpretable — any lift from C over B is attributable
+    # to the features C adds and to nothing else.
+    if arm in {"B", "C"}:
         account_table = features_account.build_account_table(train)
         parts.append(features_account.build(frame, account_table))
 
@@ -60,6 +64,13 @@ def build_arm(arm: str, frame: pd.DataFrame | None = None):
 
         _, typ_categorical = features_typology.feature_names(typology_table)
         categorical.extend(typ_categorical)
+
+    if arm == "C":
+        # Multi-hop topology only. Degree-like counts already live in arm B, so this
+        # arm has to earn its lift from structure a groupby cannot produce.
+        boundaries = splits.load_boundaries()
+        graph_table = features_graph.build_graph_table(train, boundaries["train_end"])
+        parts.append(features_graph.build(frame, graph_table))
 
     X = pd.concat(parts, axis=1)
 
