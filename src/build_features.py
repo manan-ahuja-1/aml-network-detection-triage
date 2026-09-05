@@ -24,6 +24,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config  # noqa: E402
+import embeddings  # noqa: E402
 import features_account  # noqa: E402
 import features_graph  # noqa: E402
 import features_txn  # noqa: E402
@@ -33,15 +34,15 @@ import splits  # noqa: E402
 LABEL = "is_laundering"
 
 
-def build_arm(arm: str, frame: pd.DataFrame | None = None):
+def build_arm(arm: str, frame: pd.DataFrame | None = None, n2v_seed: int | None = None):
     """Return (X, y, split_series) for the requested arm.
 
     All account-derived features are fitted on the TRAINING WINDOW ONLY and looked up
     for val/test rows — the leak-free rule (A1). The training frame is selected here
     rather than trusted from the caller so the rule cannot be bypassed by accident.
     """
-    if arm not in {"A", "B", "C"}:
-        raise ValueError(f"arm {arm!r} is not built yet (D is Day 4)")
+    if arm not in {"A", "B", "C", "D"}:
+        raise ValueError(f"unknown arm {arm!r}")
 
     if frame is None:
         frame = splits.load_transactions()
@@ -54,7 +55,11 @@ def build_arm(arm: str, frame: pd.DataFrame | None = None):
     # Arms are strictly NESTED: C contains all of B, which contains all of A. That is
     # what makes the ablation interpretable — any lift from C over B is attributable
     # to the features C adds and to nothing else.
-    if arm in {"B", "C"}:
+    # NOTE: every arm from B onward includes these. Forgetting to add "D" here once
+    # produced an arm D with 155 features instead of 231 — missing all 87 account and
+    # typology features — which made the C vs D comparison meaningless while still
+    # training and reporting a plausible-looking number.
+    if arm in {"B", "C", "D"}:
         account_table = features_account.build_account_table(train)
         parts.append(features_account.build(frame, account_table))
 
@@ -65,12 +70,21 @@ def build_arm(arm: str, frame: pd.DataFrame | None = None):
         _, typ_categorical = features_typology.feature_names(typology_table)
         categorical.extend(typ_categorical)
 
-    if arm == "C":
+    if arm in {"C", "D"}:
         # Multi-hop topology only. Degree-like counts already live in arm B, so this
         # arm has to earn its lift from structure a groupby cannot produce.
         boundaries = splits.load_boundaries()
         graph_table = features_graph.build_graph_table(train, boundaries["train_end"])
         parts.append(features_graph.build(frame, graph_table))
+
+    if arm == "D":
+        # node2vec over the SAME graph features_graph built, so the C->D comparison
+        # isolates the embeddings rather than confounding them with a different graph.
+        seed = config.RANDOM_SEED if n2v_seed is None else n2v_seed
+        embedding_table = embeddings.build_embedding_table(
+            train, boundaries["train_end"], seed
+        )
+        parts.append(embeddings.build(frame, embedding_table))
 
     X = pd.concat(parts, axis=1)
 

@@ -205,6 +205,627 @@
         "to_in_active_days": 7478.5315819028765,
         "to_median_hours_to_forward": 7226.844064684585
       }
+    },
+    "D_d16_seed2024": {
+      "arm": "D",
+      "description": "C + node2vec embeddings",
+      "n_features": 135,
+      "best_iteration": 273,
+      "train_seconds": 129.6,
+      "val": {
+        "n": 1015300,
+        "positives": 1083,
+        "base_rate": 0.0010666797990741652,
+        "pr_auc": 0.1629340938768656,
+        "roc_auc": 0.9321893238473133,
+        "precision_at_k": {
+          "50": {
+            "k": 50,
+            "hits": 34,
+            "precision": 0.68,
+            "recall": 0.03139427516158818
+          },
+          "100": {
+            "k": 100,
+            "hits": 76,
+            "precision": 0.76,
+            "recall": 0.07017543859649122
+          },
+          "500": {
+            "k": 500,
+            "hits": 186,
+            "precision": 0.372,
+            "recall": 0.17174515235457063
+          }
+        },
+        "alerts_at_80_recall": {
+          "target_recall": 0.8,
+          "achievable": true,
+          "threshold": 0.0002134636011995788,
+          "precision": 0.007366031877283428,
+          "recall": 0.8060941828254847,
+          "alerts_to_review": 118517
+        }
+      },
+      "top_features": {
+        "from_out_txn_per_day": 404044.92783617973,
+        "from_out_n_currencies": 293454.92474222183,
+        "from_out_counterparties_per_txn": 242816.67582261562,
+        "from_layering_format_share": 132324.2200626135,
+        "is_cross_currency": 124299.01295280457,
+        "to_in_counterparties_per_txn": 73644.08441698551,
+        "from_gap_burstiness": 48689.900936841965,
+        "to_layering_format_share": 41884.241696715355,
+        "from_out_n": 27834.70326900482,
+        "from_out_total_usd": 23992.08143734932,
+        "from_n2v_07": 17506.586102485657,
+        "from_n2v_13": 15830.043109416962,
+        "paid_usd": 15173.181434392929,
+        "to_out_n_currencies": 14937.204488515854,
+        "to_out_counterparties_per_txn": 13728.105056285858,
+        "from_flow_through_ratio": 13579.19744694233,
+        "recv_usd": 13043.467627644539,
+        "from_entity_n_accounts": 12725.927097797394,
+        "to_out_n": 12724.37080335617,
+        "payment_format": 11689.269540071487,
+        "from_median_gap_hours": 11213.855025053024,
+        "from_in_txn_per_day": 10278.742548942566,
+        "from_louvain_community_size": 9668.731702446938,
+        "is_same_bank": 8927.406178712845,
+        "from_n2v_15": 8782.492451906204
+      }
+    },
+    "D_d16_seed42": {
+      "arm": "D",
+      "description": "C + node2vec embeddings",
+      "n_features": 135,
+      "best_iteration": 308,
+      "train_seconds": 149.1,
+      "val": {
+        "n": 1015300,
+        "positives": 1083,
+        "base_rate": 0.0010666797990741652,
+        "pr_auc": 0.15897752432804255,
+        "roc_auc": 0.947020672018198,
+        "precision_at_k": {
+          "50": {
+            "k": 50,
+            "hits": 30,
+            "precision": 0.6,
+            "recall": 0.027700831024930747
+          },
+          "100": {
+            "k": 100,
+            "hits": 70,
+            "precision": 0.7,
+            "recall": 0.06463527239150507
+          },
+          "500": {
+            "k": 500,
+            "hits": 187,
+            "precision": 0.374,
+            "recall": 0.17266851338873498
+          }
+        },
+        "alerts_at_80_recall": {
+          "target_recall": 0.8,
+          "achievable": true,
+          "threshold": 0.0002673640634989947,
+          "precision": 0.008512769153730596,
+          "recall": 0.8005540166204986,
+          "alerts_to_review": 101847
+        }
+      },
+      "top_features": {
+        "to_retention_ratio": 581262.8616063595,
+        "from_in_max_usd": 480911.9472126961,
+        "to_in_txn_per_day": 461778.1864247322,
+        "from_out_n_currencies": 257212.62638545036,
+        "from_layering_format_share": 226427.8179255724,
+        "to_gross_flow_usd": 181531.97864556313,
+        "recv_usd": 149772.14316558838,
+        "is_cross_currency": 124266.47421860695,
+        "from_in_n_formats": 111479.93887448311,
+        "from_degree_total": 108264.51084423065,
+        "from_out_txn_per_day": 84947.43742740154,
+        "to_n2v_14": 66886.31822049618,
+        "to_n2v_03": 66241.88186430931,
+        "from_out_counterparties_per_txn": 58364.23800730705,
+        "from_gap_burstiness": 52461.17679440975,
+        "to_out_txn_per_day": 47540.11913239956,
+        "paid_usd": 47425.85340261459,
+        "to_layering_format_share": 41733.40798377991,
+        "from_entity_n_banks": 37680.44083070755,
+        "from_in_counterparties_per_txn": 24742.99481678009,
+        "from_flow_through_ratio": 15761.1349132061,
+        "is_self_transaction": 15535.402734518051,
+        "from_median_gap_hours": 15328.076989889145,
+        "payment_format": 12835.58291554451,
+        "from_in_txn_per_day": 11475.805148482323
+      }
+    },
+    "D_d16_seed7": {
+      "arm": "D",
+      "description": "C + node2vec embeddings",
+      "n_features": 135,
+      "best_iteration": 744,
+      "train_seconds": 285.5,
+      "val": {
+        "n": 1015300,
+        "positives": 1083,
+        "base_rate": 0.0010666797990741652,
+        "pr_auc": 0.1574539485769361,
+        "roc_auc": 0.876604534023081,
+        "precision_at_k": {
+          "50": {
+            "k": 50,
+            "hits": 34,
+            "precision": 0.68,
+            "recall": 0.03139427516158818
+          },
+          "100": {
+            "k": 100,
+            "hits": 75,
+            "precision": 0.75,
+            "recall": 0.06925207756232687
+          },
+          "500": {
+            "k": 500,
+            "hits": 181,
+            "precision": 0.362,
+            "recall": 0.16712834718374883
+          }
+        },
+        "alerts_at_80_recall": {
+          "target_recall": 0.8,
+          "achievable": true,
+          "threshold": 9.35283722846517e-06,
+          "precision": 0.006913324296308109,
+          "recall": 0.8005540166204986,
+          "alerts_to_review": 125410
+        }
+      },
+      "top_features": {
+        "from_out_counterparties_per_txn": 370660.3671923876,
+        "from_out_n_currencies": 181946.04280510545,
+        "from_entity_n_accounts": 150768.94965177774,
+        "is_cross_currency": 124061.31895163655,
+        "recv_usd": 109146.66755750775,
+        "from_out_txn_per_day": 86609.37059786916,
+        "from_gap_burstiness": 49868.35546770692,
+        "from_layering_format_share": 47009.43824276328,
+        "to_layering_format_share": 41814.39060407877,
+        "to_in_counterparties_per_txn": 29775.977796047926,
+        "from_median_gap_hours": 26397.003567934036,
+        "paid_usd": 18242.043536245823,
+        "from_n2v_15": 15215.298358380795,
+        "from_flow_through_ratio": 14216.030230343342,
+        "from_n2v_13": 13014.842113852501,
+        "from_out_n_counterparties": 12847.164621949196,
+        "to_out_n_currencies": 12749.44491532445,
+        "to_median_hours_to_forward": 11254.741915255785,
+        "payment_format": 11037.497046560049,
+        "to_in_mean_usd": 10528.87168264389,
+        "to_in_txn_per_day": 9985.47863215208,
+        "to_in_n_counterparties": 7970.838271290064,
+        "to_out_mean_usd": 7758.236805677414,
+        "from_out_n_banks": 7015.3580477535725,
+        "to_n2v_09": 6412.027609080076
+      }
+    },
+    "D_d32_seed2024": {
+      "arm": "D",
+      "description": "C + node2vec embeddings",
+      "n_features": 167,
+      "best_iteration": 512,
+      "train_seconds": 268.9,
+      "val": {
+        "n": 1015300,
+        "positives": 1083,
+        "base_rate": 0.0010666797990741652,
+        "pr_auc": 0.15398338165452913,
+        "roc_auc": 0.943922010545238,
+        "precision_at_k": {
+          "50": {
+            "k": 50,
+            "hits": 46,
+            "precision": 0.92,
+            "recall": 0.04247460757156048
+          },
+          "100": {
+            "k": 100,
+            "hits": 80,
+            "precision": 0.8,
+            "recall": 0.07386888273314866
+          },
+          "500": {
+            "k": 500,
+            "hits": 163,
+            "precision": 0.326,
+            "recall": 0.1505078485687904
+          }
+        },
+        "alerts_at_80_recall": {
+          "target_recall": 0.8,
+          "achievable": true,
+          "threshold": 6.649078408443632e-05,
+          "precision": 0.00847300268751527,
+          "recall": 0.8005540166204986,
+          "alerts_to_review": 102325
+        }
+      },
+      "top_features": {
+        "from_out_n_currencies": 110943.01263171434,
+        "from_median_gap_hours": 75706.33908230066,
+        "from_out_counterparties_per_txn": 27700.346182584763,
+        "to_out_n_currencies": 23112.091373085976,
+        "from_layering_format_share": 21374.740576684475,
+        "from_in_txn_per_day": 18918.272586882114,
+        "from_entity_n_accounts": 12781.897067189217,
+        "from_n2v_31": 11895.478528380394,
+        "paid_usd": 10336.720646977425,
+        "to_in_txn_per_day": 10242.225431829691,
+        "to_in_n_counterparties": 10014.792821109295,
+        "from_out_n_banks": 9450.910737156868,
+        "payment_format": 9382.369915366173,
+        "from_out_n": 8345.623465895653,
+        "from_core_number": 8056.524535179138,
+        "from_out_n_counterparties": 6407.3598383665085,
+        "from_in_active_days": 6389.502924621105,
+        "is_self_transaction": 5851.768567502499,
+        "day_of_week": 5751.702037632465,
+        "recv_usd": 5619.63719856739,
+        "to_median_gap_hours": 5481.185957729816,
+        "from_in_n_formats": 5240.419981718063,
+        "from_out_txn_per_day": 5175.186790585518,
+        "hour": 4536.737565457821,
+        "from_n2v_01": 4396.030275583267
+      }
+    },
+    "D_d32_seed42": {
+      "arm": "D",
+      "description": "C + node2vec embeddings",
+      "n_features": 167,
+      "best_iteration": 309,
+      "train_seconds": 172.6,
+      "val": {
+        "n": 1015300,
+        "positives": 1083,
+        "base_rate": 0.0010666797990741652,
+        "pr_auc": 0.18342499351458302,
+        "roc_auc": 0.964673768581477,
+        "precision_at_k": {
+          "50": {
+            "k": 50,
+            "hits": 47,
+            "precision": 0.94,
+            "recall": 0.04339796860572484
+          },
+          "100": {
+            "k": 100,
+            "hits": 88,
+            "precision": 0.88,
+            "recall": 0.08125577100646353
+          },
+          "500": {
+            "k": 500,
+            "hits": 181,
+            "precision": 0.362,
+            "recall": 0.16712834718374883
+          }
+        },
+        "alerts_at_80_recall": {
+          "target_recall": 0.8,
+          "achievable": true,
+          "threshold": 0.0003549924779320809,
+          "precision": 0.011352179435140691,
+          "recall": 0.8005540166204986,
+          "alerts_to_review": 76373
+        }
+      },
+      "top_features": {
+        "from_out_n_currencies": 107861.70147264004,
+        "from_median_gap_hours": 75070.77123498917,
+        "from_out_counterparties_per_txn": 26851.86823141575,
+        "to_out_n_currencies": 22768.527065634727,
+        "from_layering_format_share": 18988.444256424904,
+        "from_in_txn_per_day": 15414.430694699287,
+        "from_entity_n_accounts": 12101.340633034706,
+        "from_degree_total": 10075.280441999435,
+        "payment_format": 9943.973170399666,
+        "to_in_txn_per_day": 9840.500397086143,
+        "from_in_active_days": 9612.222256660461,
+        "from_out_n_banks": 9504.094601869583,
+        "to_in_n_counterparties": 9462.019111394882,
+        "paid_usd": 8381.097656846046,
+        "from_out_n": 8275.027708530426,
+        "from_core_number": 7500.775700807571,
+        "is_self_transaction": 6355.39988899231,
+        "recv_usd": 6049.142501473427,
+        "from_out_n_counterparties": 5889.606250524521,
+        "to_median_gap_hours": 5716.650617361069,
+        "from_n2v_21": 5685.380508542061,
+        "from_out_std_usd": 5190.66384267807,
+        "to_in_counterparties_per_txn": 5072.660940408707,
+        "from_in_n_formats": 4967.8303565979,
+        "day_of_week": 4905.553365111351
+      }
+    },
+    "D_d32_seed7": {
+      "arm": "D",
+      "description": "C + node2vec embeddings",
+      "n_features": 167,
+      "best_iteration": 911,
+      "train_seconds": 423.2,
+      "val": {
+        "n": 1015300,
+        "positives": 1083,
+        "base_rate": 0.0010666797990741652,
+        "pr_auc": 0.1605193061577187,
+        "roc_auc": 0.8770693067736326,
+        "precision_at_k": {
+          "50": {
+            "k": 50,
+            "hits": 45,
+            "precision": 0.9,
+            "recall": 0.04155124653739612
+          },
+          "100": {
+            "k": 100,
+            "hits": 77,
+            "precision": 0.77,
+            "recall": 0.07109879963065559
+          },
+          "500": {
+            "k": 500,
+            "hits": 167,
+            "precision": 0.334,
+            "recall": 0.15420129270544783
+          }
+        },
+        "alerts_at_80_recall": {
+          "target_recall": 0.8,
+          "achievable": true,
+          "threshold": 5.637270090441683e-06,
+          "precision": 0.007437463541845383,
+          "recall": 0.8005540166204986,
+          "alerts_to_review": 116572
+        }
+      },
+      "top_features": {
+        "from_out_n_currencies": 201496.62530590594,
+        "from_median_gap_hours": 76094.62940505147,
+        "from_out_counterparties_per_txn": 27844.770303756,
+        "to_out_n_currencies": 23245.765540987253,
+        "from_layering_format_share": 21288.392195016146,
+        "from_in_txn_per_day": 19229.314945459366,
+        "from_out_n_banks": 12788.538210004568,
+        "from_entity_n_accounts": 12467.933438509703,
+        "payment_format": 10718.65196043253,
+        "to_in_n_counterparties": 10656.177058786154,
+        "to_median_gap_hours": 10587.103797093034,
+        "to_in_txn_per_day": 9931.745687097311,
+        "paid_usd": 9861.842611938715,
+        "from_n2v_21": 8751.764399439096,
+        "to_n2v_00": 8593.330859616399,
+        "from_out_n": 7982.389685153961,
+        "from_core_number": 7703.381866425276,
+        "recv_usd": 7225.280498594046,
+        "from_out_txn_per_day": 6120.157526731491,
+        "day_of_week": 5936.542675346136,
+        "is_self_transaction": 5687.174469858408,
+        "from_n2v_10": 5226.883759081364,
+        "to_n2v_19": 5222.537970766425,
+        "from_in_n_formats": 4916.064803928137,
+        "hour": 4795.554879963398
+      }
+    },
+    "D_seed2024": {
+      "arm": "D",
+      "description": "C + node2vec embeddings",
+      "n_features": 231,
+      "best_iteration": 771,
+      "train_seconds": 550.3,
+      "val": {
+        "n": 1015300,
+        "positives": 1083,
+        "base_rate": 0.0010666797990741652,
+        "pr_auc": 0.15814884201797585,
+        "roc_auc": 0.8567340993975083,
+        "precision_at_k": {
+          "50": {
+            "k": 50,
+            "hits": 48,
+            "precision": 0.96,
+            "recall": 0.0443213296398892
+          },
+          "100": {
+            "k": 100,
+            "hits": 88,
+            "precision": 0.88,
+            "recall": 0.08125577100646353
+          },
+          "500": {
+            "k": 500,
+            "hits": 168,
+            "precision": 0.336,
+            "recall": 0.15512465373961218
+          }
+        },
+        "alerts_at_80_recall": {
+          "target_recall": 0.8,
+          "achievable": true,
+          "threshold": 4.215934240517967e-06,
+          "precision": 0.0056440233823825845,
+          "recall": 0.801477377654663,
+          "alerts_to_review": 153791
+        }
+      },
+      "top_features": {
+        "from_out_counterparties_per_txn": 95736.70741572976,
+        "from_layering_format_share": 42880.50121846795,
+        "to_in_txn_per_day": 36699.849068433046,
+        "recv_usd": 30292.85881444812,
+        "to_in_n_banks": 24813.305405706167,
+        "to_out_n_currencies": 23773.981010764837,
+        "from_out_n_banks": 22223.40704098344,
+        "from_flow_through_ratio": 19228.142809331417,
+        "to_in_counterparties_per_txn": 18946.15945214033,
+        "from_out_total_usd": 18917.455266475677,
+        "from_in_n": 15997.87114393711,
+        "payment_format": 15484.40208157897,
+        "to_in_n": 14877.657681196928,
+        "paid_usd": 13535.00445318222,
+        "from_out_n_currencies": 13163.808260649443,
+        "to_pagerank": 10807.222983390093,
+        "from_median_gap_hours": 10453.317229390144,
+        "to_in_active_days": 9689.815687805414,
+        "from_n2v_15": 8420.072846978903,
+        "from_out_n": 7965.00857937336,
+        "from_out_n_counterparties": 7661.671241104603,
+        "from_in_active_days": 7159.597261667252,
+        "from_entity_n_banks": 6556.555130124092,
+        "day_of_week": 6066.627018362284,
+        "to_n2v_01": 5465.917035669088
+      }
+    },
+    "D_seed42": {
+      "arm": "D",
+      "description": "C + node2vec embeddings",
+      "n_features": 231,
+      "best_iteration": 48,
+      "train_seconds": 107.7,
+      "val": {
+        "n": 1015300,
+        "positives": 1083,
+        "base_rate": 0.0010666797990741652,
+        "pr_auc": 0.09254581479991386,
+        "roc_auc": 0.9036834810724007,
+        "precision_at_k": {
+          "50": {
+            "k": 50,
+            "hits": 35,
+            "precision": 0.7,
+            "recall": 0.032317636195752536
+          },
+          "100": {
+            "k": 100,
+            "hits": 68,
+            "precision": 0.68,
+            "recall": 0.06278855032317636
+          },
+          "500": {
+            "k": 500,
+            "hits": 106,
+            "precision": 0.212,
+            "recall": 0.09787626962142197
+          }
+        },
+        "alerts_at_80_recall": {
+          "target_recall": 0.8,
+          "achievable": true,
+          "threshold": 0.0003689616229879768,
+          "precision": 0.006302002410443318,
+          "recall": 0.801477377654663,
+          "alerts_to_review": 137734
+        }
+      },
+      "top_features": {
+        "to_in_counterparties_per_txn": 156326.9337530136,
+        "from_out_counterparties_per_txn": 96510.43822002411,
+        "from_in_n": 80688.67335128784,
+        "from_out_n": 38889.991238594055,
+        "from_layering_format_share": 37697.64495944977,
+        "recv_usd": 30350.864453315735,
+        "to_in_n_banks": 24530.566680908203,
+        "to_in_txn_per_day": 20534.139362335205,
+        "from_out_n_banks": 19544.153738975525,
+        "from_median_gap_hours": 18681.356689453125,
+        "payment_format": 15244.66262435913,
+        "from_flow_through_ratio": 14410.490984916687,
+        "to_out_n_currencies": 14133.591753005981,
+        "to_in_n": 12795.550966262817,
+        "from_out_n_counterparties": 8348.163407325745,
+        "from_n2v_29": 7822.911121368408,
+        "from_out_n_currencies": 7290.954160690308,
+        "paid_usd": 7189.797665596008,
+        "from_gap_burstiness": 7043.610074043274,
+        "to_in_active_days": 6544.895094871521,
+        "from_in_txn_per_day": 6006.705325126648,
+        "from_entity_n_accounts": 5740.106541633606,
+        "from_entity_n_banks": 5283.0031061172485,
+        "from_in_active_days": 3493.635760307312,
+        "to_n2v_33": 3341.319288253784
+      }
+    },
+    "D_seed7": {
+      "arm": "D",
+      "description": "C + node2vec embeddings",
+      "n_features": 231,
+      "best_iteration": 1954,
+      "train_seconds": 1223.9,
+      "val": {
+        "n": 1015300,
+        "positives": 1083,
+        "base_rate": 0.0010666797990741652,
+        "pr_auc": 0.15389415288907501,
+        "roc_auc": 0.8194160872493488,
+        "precision_at_k": {
+          "50": {
+            "k": 50,
+            "hits": 47,
+            "precision": 0.94,
+            "recall": 0.04339796860572484
+          },
+          "100": {
+            "k": 100,
+            "hits": 77,
+            "precision": 0.77,
+            "recall": 0.07109879963065559
+          },
+          "500": {
+            "k": 500,
+            "hits": 164,
+            "precision": 0.328,
+            "recall": 0.15143120960295475
+          }
+        },
+        "alerts_at_80_recall": {
+          "target_recall": 0.8,
+          "achievable": true,
+          "threshold": 3.4793510366489136e-08,
+          "precision": 0.0031606115619326755,
+          "recall": 0.8005540166204986,
+          "alerts_to_review": 274314
+        }
+      },
+      "top_features": {
+        "from_out_counterparties_per_txn": 97160.07773696072,
+        "recv_usd": 35848.48783554323,
+        "from_layering_format_share": 32992.114928716794,
+        "to_in_counterparties_per_txn": 32327.62681786716,
+        "to_in_txn_per_day": 25368.525020051748,
+        "to_in_n_banks": 23252.071625541896,
+        "to_in_n": 20950.37966715172,
+        "from_out_n_banks": 20512.84566300735,
+        "from_median_gap_hours": 18416.521656043828,
+        "to_out_counterparties_per_txn": 17047.653397850692,
+        "payment_format": 16219.011848077178,
+        "from_in_n": 16035.370143117383,
+        "from_in_counterparties_per_txn": 15957.272651404142,
+        "from_flow_through_ratio": 15590.010392075405,
+        "paid_usd": 15353.891502046958,
+        "to_median_hours_to_forward": 14317.666760150343,
+        "to_out_n_currencies": 14175.554451379925,
+        "from_out_n_counterparties": 8695.612462125719,
+        "from_out_n_currencies": 8622.1184609849,
+        "from_n2v_20": 8059.743921291083,
+        "to_in_active_days": 7988.727884970605,
+        "from_out_n": 7380.685762776062,
+        "day_of_week": 6996.594304442406,
+        "to_out_n": 6995.256646053866,
+        "from_entity_n_banks": 6239.863300103694
+      }
     }
   },
   "params": {

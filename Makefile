@@ -9,7 +9,7 @@
 
 PY := ./.venv/bin/python
 
-.PHONY: help check data features graph train eval agent-eval all clean fix-libomp test
+.PHONY: help check data features graph embeddings train eval agent-eval all clean fix-libomp test
 
 # Default target: running bare `make` prints the menu rather than doing something
 # unexpected and expensive.
@@ -20,6 +20,7 @@ help:
 	@echo "  make data        Build the parquet cache and freeze the temporal split"
 	@echo "  make features    Build all four feature arms"
 	@echo "  make graph       Build the cached graph-topology features (~8 min)"
+	@echo "  make embeddings  Build the cached node2vec embeddings"
 	@echo "  make train       Train the model arms and score on validation"
 	@echo "  make eval        Evaluate the engine, write results/engine.json"
 	@echo "  make agent-eval  Evaluate the triage agent, write results/agent.json"
@@ -47,6 +48,9 @@ features:
 
 graph:
 	$(PY) src/features_graph.py
+
+embeddings:
+	$(PY) src/embeddings.py
 
 train:
 	$(PY) src/train.py --arms A,B,C

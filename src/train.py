@@ -67,10 +67,10 @@ NUM_BOOST_ROUND = 2500
 EARLY_STOPPING = 150
 
 
-def train_arm(arm: str, frame: pd.DataFrame) -> dict:
+def train_arm(arm: str, frame: pd.DataFrame, n2v_seed: int | None = None) -> dict:
     print(f"\n{'=' * 70}\nARM {arm}: {config.ARMS[arm]}\n{'=' * 70}")
 
-    X, y, split, categorical = build_features.build_arm(arm, frame)
+    X, y, split, categorical = build_features.build_arm(arm, frame, n2v_seed)
 
     train_mask = (split == "train").to_numpy()
     val_mask = (split == "val").to_numpy()
@@ -142,6 +142,8 @@ def train_arm(arm: str, frame: pd.DataFrame) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--n2v-seed", type=int, default=None,
+                        help="node2vec seed for arm D; results keyed D_seed<N>")
     parser.add_argument("--arms", default="A,B,C", help="comma-separated arms to train")
     args = parser.parse_args()
 
@@ -166,7 +168,12 @@ def main() -> int:
     results["early_stopping"] = EARLY_STOPPING
 
     for arm in args.arms.split(","):
-        results["arms"][arm.strip()] = train_arm(arm.strip(), frame)
+        arm = arm.strip()
+        # Arm D is stored per-seed so the three variance runs coexist and the
+        # spread can be reported rather than one run standing in for all.
+        suffix = f"_d{config.N2V_DIM}" if config.N2V_DIM != 64 else ""
+        key = f"D{suffix}_seed{args.n2v_seed}" if arm == "D" and args.n2v_seed is not None else arm
+        results["arms"][key] = train_arm(arm, frame, args.n2v_seed)
     results["arms"] = {k: results["arms"][k] for k in sorted(results["arms"])}
     out.write_text(json.dumps(results, indent=2))
 

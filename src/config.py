@@ -23,6 +23,7 @@ is the part that is otherwise impossible to verify by reading the code.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Final
 
@@ -177,7 +178,9 @@ ARMS: Final[dict[str, str]] = {
 # ---------------------------------------------------------------------------
 # node2vec (Day 4)
 # ---------------------------------------------------------------------------
-N2V_DIM: Final[int] = 64
+# Overridable via the N2V_DIM env var so the Day 4 dimensionality diagnostic
+# (64 -> 32 -> 16) runs without editing code. Default is the configured 64.
+N2V_DIM: Final[int] = int(os.environ.get("N2V_DIM", 64))
 N2V_WALK_LENGTH: Final[int] = 20
 N2V_WINDOW: Final[int] = 5
 N2V_EPOCHS: Final[int] = 5

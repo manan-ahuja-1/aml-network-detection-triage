@@ -278,3 +278,72 @@ def test_arm_C_adds_no_degree_equivalent_feature(frame):
                 "level — arm C would be reintroducing the quantity the arm boundary "
                 "exists to exclude"
             )
+
+
+# ---------------------------------------------------------------------------
+# Day 4 — node2vec embedding tests
+# ---------------------------------------------------------------------------
+
+import embeddings  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def embedding_table(frame):
+    boundaries = splits.load_boundaries()
+    return embeddings.build_embedding_table(
+        splits.train_frame(frame), boundaries["train_end"], config.RANDOM_SEED
+    )
+
+
+def test_embeddings_cover_exactly_the_training_graph(frame, embedding_table, train_graph):
+    """Every embedded account must be a node of the training graph, and vice versa.
+
+    An embedding for an account outside the training graph would mean the walks saw
+    an edge they should not have — the graph-level leak, one indirection further on.
+    """
+    graph_nodes = set(train_graph.nodes)
+    embedded = set(embedding_table.index)
+    assert embedded <= graph_nodes, f"{len(embedded - graph_nodes)} embedded accounts are not graph nodes"
+    # Coverage was measured at 100%; anything less means walks failed to reach part of
+    # the graph and some accounts would silently carry NaN vectors.
+    assert len(embedded) / len(graph_nodes) > 0.99
+
+
+def test_embedding_dimensionality_matches_config(embedding_table):
+    assert embedding_table.shape[1] == config.N2V_DIM
+    assert list(embedding_table.columns) == [f"n2v_{i:02d}" for i in range(config.N2V_DIM)]
+
+
+def test_arm_D_is_a_strict_superset_of_arm_C(frame):
+    """Nested arms again: D must add exactly the embedding columns and drop nothing."""
+    X_c, _, _, _ = build_features.build_arm("C", frame)
+    X_d, _, _, _ = build_features.build_arm("D", frame)
+    missing = set(X_c.columns) - set(X_d.columns)
+    assert not missing, f"arm D dropped {len(missing)} arm C columns"
+    added = set(X_d.columns) - set(X_c.columns)
+    # 64 dimensions on each of the two counterparties.
+    assert len(added) == 2 * config.N2V_DIM, f"expected {2 * config.N2V_DIM} new columns, got {len(added)}"
+
+
+def test_embeddings_are_reproducible(frame):
+    """workers=1 must give bit-identical vectors on a rerun.
+
+    At workers=4 gensim is non-deterministic regardless of seed (measured: up to 0.055
+    absolute difference per dimension), because worker threads consume training
+    examples in nondeterministic order. The repo claims `make all` reproduces every
+    reported number, so the headline arm's features must be deterministic.
+
+    Run on a SUBSAMPLE of the training window: determinism is a property of the
+    training procedure, not of the data volume, and computing the full embedding twice
+    would add several minutes to every test run for no extra assurance.
+    """
+    train = splits.train_frame(frame)
+    subsample = train.sample(n=100_000, random_state=config.RANDOM_SEED)
+
+    first = embeddings.compute_embeddings(subsample, seed=config.RANDOM_SEED)
+    second = embeddings.compute_embeddings(subsample, seed=config.RANDOM_SEED)
+
+    assert list(first.index) == list(second.index), "vocabulary order is not stable"
+    assert np.array_equal(first.to_numpy(), second.to_numpy()), (
+        "node2vec is not reproducible — check that workers=1 in embeddings.py"
+    )

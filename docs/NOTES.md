@@ -447,3 +447,110 @@ account level.
 **Next (Day 4):** arm D — node2vec embeddings on `G_train`. Given how sparse this graph
 is and how far PageRank degenerated toward degree, the honest expectation for embeddings
 is another modest lift, not a step change.
+
+---
+
+## Day 4 — Arm D: node2vec embeddings. A negative result.
+
+### Final ablation (validation; test still untouched)
+
+| arm | features | PR-AUC | note |
+|---|---|---|---|
+| R rules: flag every ACH | 0 | — | 0.75% precision, 85.4% recall |
+| A transaction only | 11 | 0.0527 | |
+| B + account/typology/entity | 87 | 0.1815 | lift over A **+0.1288** |
+| **C + multi-hop graph** | 103 | **0.1938** | lift over B **+0.0123** — **BEST** |
+| D + node2vec (dim=32, best) | 167 | 0.1660 ± 0.0155 | **−0.0278 vs C** |
+
+**node2vec embeddings do not improve on explicit graph features here, at any
+dimensionality tested.** Arm C is the final engine.
+
+### The dimensionality sweep, and what it actually shows
+
+Arm D at the configured dim=64 scored **0.1349 ± 0.0367** — far below arm C. Rather
+than conclude "embeddings are useless", the plan called for a dim sweep to distinguish
+that from "64 dimensions was too much capacity for 2,296 positives". Three seeds each:
+
+| dim | columns added | mean PR-AUC | std | range | best single run |
+|---|---|---|---|---|---|
+| 16 | 32 | 0.1598 | **0.0028** | 0.0055 | 0.1629 |
+| 32 | 64 | **0.1660** | 0.0155 | 0.0294 | **0.1834** |
+| 64 | 128 | 0.1349 | **0.0367** | 0.0656 | 0.1581 |
+
+Two things fall out.
+
+**Over-parameterisation was real.** dim=64 is the *worst* configuration, not the best.
+With only 2,296 training positives, 128 additional dense columns give the model enough
+capacity to fit noise — visible in the best-iteration counts, where dim=64 seed 42
+stopped after **48** rounds while arm C ran 2,064.
+
+**Variance scales with dimensionality**: std 0.0028 → 0.0155 → 0.0367 as dim goes
+16 → 32 → 64. More embedding capacity means the result depends more on which random
+walks happened to be drawn.
+
+**But no dimensionality beats arm C.** The best single arm D run anywhere in the sweep
+(dim=32, seed 42, 0.1834) still trails arm C's 0.1938. The conclusion is not "we
+picked the wrong dim" — it is that learned embeddings add nothing over explicit
+topology on this graph.
+
+### Why this was predictable, and was predicted
+
+Three measurements before training pointed the same way:
+
+- Embeddings **alone** predicted account-level laundering at **2.37x** base rate — no
+  better than PageRank (2.53x) already in arm C.
+- Median embedding vector norm was **0.0803** against a max of 15.98: most accounts
+  barely moved from random initialisation.
+- The graph averages **2.80 degree** with 28,326 disconnected components, so most
+  accounts appear in very few walks and Word2Vec has almost nothing to learn from them.
+
+node2vec needs a graph dense enough for random walks to reveal structure. This one is
+not.
+
+### Why running three seeds mattered
+
+Arm C's entire lift over arm B was **+0.0123**. The embedding seed spread at dim=64 was
+**0.0656 — 5.3x that lift**. A single arm D run would have reported 0.0925, 0.1539 or
+0.1581 depending purely on which seed was drawn, and any of those would have looked
+like a real number.
+
+This is the strongest methodological point of the project so far: **a lift is only
+meaningful relative to the noise of the procedure that produced it.**
+
+### Bug: arm D silently trained on the wrong feature set
+
+The first three arm D runs used **155 features instead of 231**. Extending the graph
+block to `{"C", "D"}` without also extending the arm B block meant arm D was
+arm A + graph + embeddings, missing all 87 account and typology features.
+
+It trained without error and reported plausible numbers (0.169 / 0.184 / 0.166). Had
+the feature count not been checked against expectation, the reported conclusion would
+have been "embeddings degrade the model by 0.021" — from a comparison of arm C against
+a crippled arm D.
+
+`tests/test_leakage.py::test_arm_D_is_a_strict_superset_of_arm_C` was written
+specifically to catch this, and would have. It was written and then not run — only
+`--collect-only` was used. Lesson: collection is not execution.
+
+### Reproducibility: node2vec requires workers=1
+
+gensim's Word2Vec is non-deterministic with multiple worker threads regardless of seed,
+because workers consume training examples in nondeterministic order. Measured: two runs
+with an identical seed differ by up to **0.055** per dimension at `workers=4`, and are
+**bit-identical** at `workers=1`. Arm D runs single-threaded; the cost is only ~50s per
+embedding.
+
+The suppressed `gensim ... our_dot_float` exception seen during training was checked
+and is cosmetic: no NaN, no Inf, no all-zero rows, no collapsed dimensions.
+
+### Engineering notes
+
+- Embedding cache keyed by **both** dim and seed, with the `train_end` provenance guard,
+  so sweep runs cannot clobber one another.
+- `N2V_DIM` is env-overridable so the sweep needed no code edits.
+- `embeddings.build()` uses a single `pd.concat` rather than 128 individual column
+  inserts, which pandas warns about and which measurably slowed the join.
+
+**Next (Day 5):** freeze arm C as the engine, score the **test** split exactly once,
+bootstrap CIs, cost-sensitive threshold, pattern-level recall by typology, the
+single-bank realism experiment, and SHAP for the agent handoff.

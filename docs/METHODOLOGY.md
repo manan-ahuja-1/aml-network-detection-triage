@@ -109,6 +109,29 @@ add is attributable to topology. An honest small lift over a strong baseline is 
 more than a large one over a strawman, and building the strong baseline deliberately
 is the point.
 
+**Arm D was tested and rejected on evidence.** node2vec embeddings were built over the
+same training-window graph and swept across three dimensionalities with three random
+seeds each. No configuration beat arm C:
+
+| dim | columns added | mean PR-AUC | std across seeds |
+|---|---|---|---|
+| 16 | 32 | 0.1598 | 0.0028 |
+| 32 | 64 | 0.1660 | 0.0155 |
+| 64 | 128 | 0.1349 | 0.0367 |
+
+Arm C scores 0.1938. The best single arm D run anywhere in the sweep was 0.1834.
+
+The graph averages 2.80 degree across 28,326 disconnected components, so most accounts
+appear in too few random walks for Word2Vec to learn from — median embedding norm was
+0.0803 against a max of 15.98, meaning most vectors barely moved from initialisation.
+Learned embeddings need a denser graph than this to beat explicit topology.
+
+Note also that variance scales with dimensionality (std 0.0028 → 0.0155 → 0.0367). Arm
+C's entire lift over arm B was +0.0123, which is smaller than the seed-to-seed spread
+of arm D at dim=64 (0.0656). **A lift is only meaningful relative to the noise of the
+procedure that produced it** — which is why every arm D figure here is a mean over
+three seeds rather than a single run.
+
 **Arm R exists because of a finding, not a convention.** EDA showed that "flag every
 ACH" alone achieves 84.7% recall at 0.64% precision. Real AML stacks begin with a
 rules engine and the ML layer has to justify replacing it, so a rules baseline is both
