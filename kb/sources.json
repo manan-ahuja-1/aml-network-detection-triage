@@ -1,0 +1,98 @@
+{
+  "_README": "Provenance for every document in kb/corpus/. Each corpus file names its source_id here. Nothing enters the knowledge base without an entry in this file, because a RAG system that cites unverifiable text is worse than one with no citations at all: it manufactures false confidence. Retrieved 2026-09-05.",
+  "sources": [
+    {
+      "id": "ffiec-appendix-f",
+      "title": "FFIEC BSA/AML Examination Manual, Appendix F: Money Laundering and Terrorist Financing \"Red Flags\"",
+      "publisher": "Federal Financial Institutions Examination Council",
+      "url": "https://bsaaml.ffiec.gov/manual/Appendices/07",
+      "retrieved": "2026-09-05",
+      "content_type": "verbatim excerpt",
+      "used_for": "Funds-transfer and shell-company red flag indicators. This is the list US bank examiners actually work from, which is why it is the primary red-flag source rather than a vendor blog."
+    },
+    {
+      "id": "ffiec-appendix-g",
+      "title": "FFIEC BSA/AML Examination Manual, Appendix G: Structuring",
+      "publisher": "Federal Financial Institutions Examination Council",
+      "url": "https://bsaaml.ffiec.gov/manual/Appendices/08",
+      "retrieved": "2026-09-05",
+      "content_type": "verbatim excerpt",
+      "used_for": "The legal definition of structuring (31 CFR 1010.100(xx)), the $10,000 CTR threshold and $3,000 monetary-instrument recordkeeping threshold, and the explicit warning that two sub-threshold transactions days apart are NOT automatically structuring."
+    },
+    {
+      "id": "ffiec-appendix-l",
+      "title": "FFIEC BSA/AML Examination Manual, Appendix L: SAR Quality Guidance",
+      "publisher": "Federal Financial Institutions Examination Council",
+      "url": "https://bsaaml.ffiec.gov/manual/Appendices/13",
+      "retrieved": "2026-09-05",
+      "content_type": "verbatim excerpt",
+      "used_for": "The who/what/when/where/why/how frame and the 'modus operandi' requirement for a narrative."
+    },
+    {
+      "id": "fincen-sar-narrative-2003",
+      "title": "SAR Narrative Guidance Package, Part I: Guidance on Preparing a Complete and Sufficient Suspicious Activity Report Narrative",
+      "publisher": "Financial Crimes Enforcement Network (FinCEN)",
+      "date": "November 2003",
+      "url": "https://www.fincen.gov/system/files/shared/sarnarrcompletguidfinal_112003.pdf",
+      "retrieved": "2026-09-05",
+      "content_type": "verbatim excerpt",
+      "used_for": "The introduction / body / conclusion narrative structure the agent's case note template mirrors."
+    },
+    {
+      "id": "fincen-fin-2014-a005",
+      "title": "FinCEN Advisory FIN-2014-A005: U.S. Currency Restrictions in Mexico — Funnel Accounts and Trade-Based Money Laundering",
+      "publisher": "Financial Crimes Enforcement Network (FinCEN)",
+      "date": "2014-05-28",
+      "url": "https://www.fincen.gov/resources/advisories/fincen-advisory-fin-2014-a005",
+      "retrieved": "2026-09-05",
+      "content_type": "verbatim excerpt",
+      "used_for": "The funnel-account definition and red flags. Directly relevant: a funnel account is the real-world name for the FAN-IN shape this project detects."
+    },
+    {
+      "id": "fincen-fin-2020-a003",
+      "title": "FinCEN Advisory FIN-2020-A003: Advisory on Imposter Scams and Money Mule Schemes Related to COVID-19",
+      "publisher": "Financial Crimes Enforcement Network (FinCEN)",
+      "date": "2020-07-07",
+      "url": "https://www.fincen.gov/system/files/advisory/2020-07-07/Advisory_%20Imposter_and_Money_Mule_COVID_19_508_FINAL.pdf",
+      "retrieved": "2026-09-05",
+      "content_type": "verbatim excerpt",
+      "used_for": "The unwitting / witting / complicit money-mule taxonomy, which the agent uses to reason about disposition rather than only about detection."
+    },
+    {
+      "id": "ecfr-1020-320",
+      "title": "31 CFR § 1020.320 — Reports by banks of suspicious transactions",
+      "publisher": "Electronic Code of Federal Regulations (eCFR)",
+      "url": "https://www.ecfr.gov/current/title-31/subtitle-B/chapter-X/part-1020/subpart-C/section-1020.320",
+      "retrieved": "2026-09-05",
+      "content_type": "verbatim excerpt",
+      "used_for": "The SAR filing deadline: 30 calendar days from initial detection, extendable to 60 if no suspect is identified."
+    },
+    {
+      "id": "bpi-getting-to-effectiveness-2018",
+      "title": "Getting to Effectiveness — Report on U.S. Financial Institution Resources Devoted to BSA/AML & Sanctions Compliance",
+      "publisher": "Bank Policy Institute",
+      "date": "2018-10-29",
+      "url": "https://bpi.com/getting-to-effectiveness-report-on-u-s-financial-institution-resources-devoted-to-bsa-aml-sanctions-compliance/",
+      "retrieved": "2026-09-05",
+      "content_type": "reported figures, with our own derived ratios shown as derived",
+      "used_for": "Alert economics. This is the PRIMARY SOURCE behind the '90-95% of AML alerts are false positives' figure that vendor marketing repeats without attribution. Survey of 19 US banks, $50bn-$500bn+ in assets."
+    },
+    {
+      "id": "fatf-va-red-flags-2020",
+      "title": "Virtual Assets Red Flag Indicators of Money Laundering and Terrorist Financing",
+      "publisher": "Financial Action Task Force (FATF)",
+      "date": "2020-09-14",
+      "url": "https://www.fatf-gafi.org/en/publications/Methodsandtrends/Virtual-assets-red-flag-indicators.html",
+      "retrieved": "2026-09-05",
+      "content_type": "cited, summarised",
+      "used_for": "Relevant because Bitcoin is one of the fifteen currencies in the dataset. Based on 100+ case studies from the FATF Global Network."
+    },
+    {
+      "id": "ibm-amlsim-typologies",
+      "title": "HI-Small_Patterns.txt typology labels (IBM synthetic AML transaction generator)",
+      "publisher": "IBM / Kaggle dataset ealtman2019/ibm-transactions-for-anti-money-laundering-aml",
+      "content_type": "dataset ground truth, mapped by us to regulatory typologies",
+      "used_for": "The eight injected pattern shapes. The MAPPING from these shapes to real-world typologies and red flags is our own synthesis and is labelled as such wherever it appears."
+    }
+  ]
+}

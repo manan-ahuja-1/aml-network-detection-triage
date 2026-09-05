@@ -260,3 +260,140 @@ Stated here because they are the first questions a reviewer should ask.
 - **Residual base-rate drift** remains after truncation: train 0.0754%, val 0.1067%,
   test 0.1125%. Laundering patterns ramp up over the first days of the simulation, so
   the earliest window is genuinely quieter.
+
+---
+
+## 7. Scoring the test split exactly once
+
+Every number reported through Days 1–4 came from validation, and validation was consulted
+repeatedly: to set `min_data_in_leaf`, to reject `scale_pos_weight`, to drop
+`reverse_pagerank`, to choose among four feature arms, and — continuously — by early
+stopping, which selected iteration 2064 precisely because it maximised validation average
+precision. Each of those consultations leaked a little information about validation into
+the model. That is what a validation set is for, but it means validation performance is
+optimistic by an unknown amount.
+
+So the test split was scored once, after the engine was frozen, and the result stands.
+Consulting test and then changing anything would convert it into a second validation set.
+Two mechanisms enforce this rather than merely declaring it: the booster is persisted to
+`models/engine_armC.txt` and reloaded by every later stage, and a SHA-256 digest of the
+test scores is recorded in `results/engine.json`, so a future run producing different
+scores is detectable.
+
+Arm C's retraining reproduced its Day 3 validation result exactly (iteration 2064,
+PR-AUC 0.1938), confirming that the ablation table and the frozen engine describe the same
+model.
+
+## 8. Confidence intervals, and why they are stratified
+
+The test split holds 1,143 positives. A PR-AUC quoted to four decimals off 1,143 events
+implies a precision the data cannot support, so every headline figure carries a percentile
+bootstrap interval over 2,000 resamples.
+
+Resampling is **stratified by class**, holding the number of positives fixed. PR-AUC moves
+with the base rate; at a 1-in-900 rate an unstratified resample's positive count varies by
+several percent, and the resulting interval would be measuring class-balance jitter as much
+as model uncertainty — wider than the truth, and wide for the wrong reason.
+
+The intervals earned their place immediately: validation [0.1700, 0.2190] and test
+[0.0788, 0.1137] **do not overlap**, which converts "test looks worse" from an impression
+into a finding that has to be explained.
+
+`average_precision_score` costs ~260 ms on a 1M-row split, making 2,000 resamples a
+nine-minute operation per split. Sorting once outside the loop and expressing each
+resample as a per-row multiplicity vector reduces it to ~29 ms, and the two agree to
+5.6e-17 (asserted in `tests/test_engine.py`). The point estimate still comes from sklearn;
+only the interval uses the fast path, because the fast path assumes no tied scores.
+
+## 9. Diagnosing the test drop: shape, not just size
+
+Test PR-AUC (0.0949) is half of validation (0.1938). The project's value here is not the
+number but the diagnosis, and the diagnosis worked by asking which explanations predict
+which *shapes*.
+
+**Cold start was the obvious hypothesis and it was wrong.** Features are fitted on the
+training window only, so accounts absent from training get NaN everywhere; test sits
+further from training and holds 356,263 distinct accounts against validation's 236,109.
+Measured, though, coverage is identical (0.20% of rows with an unseen account in both
+splits), and the test/validation ratio stays at 0.49–0.51 across every coverage subset. A
+constant ratio means coverage explains none of the gap. The extra test accounts had been
+seen in training; they were simply idle during validation.
+
+**Validation optimism and temporal decay predict different shapes.** Optimism is a step:
+validation uniformly inflated, test honest, no variation inside either. Decay is a slope.
+Slicing the post-training period into six equal windows shows PR-AUC falling monotonically
+from 0.2523 to 0.1465 *within validation*, before test begins — already most of the way to
+test's 0.0949. It is a slope. The val/test boundary is incidental; the mechanism is feature
+staleness.
+
+This reframes the headline. Test PR-AUC is not "the model is worse than we thought"; it is
+the model at two to four days of feature staleness, and PR-AUC roughly halves per ~1.5 days
+of distance from the training window. It also converts the generic "we would monitor for
+drift" section into a specific, measured requirement: recompute account and graph features
+on a rolling window, and retrain on a cadence set by that half-life.
+
+It does **not** change the engine. Arm C was chosen on validation, which is correct, and
+re-choosing after seeing test would be the error this whole section exists to avoid.
+
+## 10. Evaluating at the unit compliance cares about
+
+Transaction-level metrics understate operational usefulness, because a laundering ring
+spans many transactions and an investigator needs one thread to pull. Reporting at three
+units makes that visible:
+
+| unit | val | test |
+|---|---|---|
+| transaction PR-AUC | 0.1938 | 0.0949 |
+| account precision@100 | 88% | 50% |
+| pattern recall @ threshold | 92.3% | 83.6% |
+
+Transaction-level performance halves between splits; **pattern-level recall falls only from
+92.3% to 83.6%**. The operational degradation is far milder than the headline metric
+implies, and that gap is only observable because `HI-Small_Patterns.txt` was parsed on
+Day 1 into real ground truth.
+
+Two caveats travel with every pattern metric. Only 2,554 of the 4,522 surviving laundering
+transactions belong to a named pattern, so pattern recall describes the labelled 56.5%.
+And the weakest typology, CYCLE at 68.0%, is weak for a known reason: `in_cycle` is
+computed on the *static* training-window graph, so a cycle formed during the test window
+is invisible to it — the measured cost of deferring time-respecting motif detection.
+
+## 11. Grounding half of an assumption, and saying which half
+
+The cost-optimal threshold depends on the ratio of a missed case to a false-alert review.
+Only one side of that ratio can be sourced.
+
+The **denominator** can: BPI's 2018 *Getting to Effectiveness*, a survey of 19 US banks,
+reports $2.4bn of BSA/AML spend against 16 million alerts reviewed — roughly $150 per
+alert, and an upper bound at that, since the $2.4bn also covers KYC, CTR filing, systems
+and model validation. The same survey yields the false-positive figure from primary data:
+640,000 SARs from 16 million alerts is a 4% conversion rate, so 96% of alerts produced no
+SAR.
+
+The **numerator** cannot. No published figure gives the expected cost of one missed
+laundering transaction; penalties are levied for programme failures rather than per
+undetected transaction, and the counterfactual harm is unobservable.
+
+So the operating point is reported as a sensitivity strip across seven cost ratios rather
+than a single tuned threshold. Presenting one number would disguise a judgement call as a
+measurement.
+
+## 12. Retrieval grounded in sources that were actually read
+
+The triage agent's knowledge base is built from primary regulatory text — FFIEC
+Appendices F, G and L; FinCEN's SAR Narrative Guidance, FIN-2014-A005 and FIN-2020-A003;
+31 CFR § 1020.320 — with every document registered in `kb/sources.json` against a URL and
+retrieval date. `load_corpus()` raises on an unregistered `source_id`, so the constraint is
+enforced rather than intended. Where the corpus contains our own synthesis — the mapping
+from the dataset's eight injected shapes to regulatory typologies and to the specific model
+features that fire — it is labelled as ours.
+
+A RAG system that cites unverifiable text is worse than one with no citations, because it
+manufactures confidence the reader cannot check.
+
+The one non-obvious engineering constraint is the embedder's 256-token window. Documents
+run 400–600 tokens, so indexing them whole would store complete text while embedding only
+each document's opening, and retrieval would silently never match the remainder. Nothing
+errors. Chunking is measured against the real limit, which required disabling the
+tokenizer's own 128-token truncation first — with it left on, every long chunk reports
+exactly 128 tokens and an over-length chunk is invisible to the check meant to catch it.

@@ -9,7 +9,7 @@
 
 PY := ./.venv/bin/python
 
-.PHONY: help check data features graph embeddings train eval agent-eval all clean fix-libomp test
+.PHONY: help check data features graph embeddings train eval figures kb agent-eval all clean fix-libomp test
 
 # Default target: running bare `make` prints the menu rather than doing something
 # unexpected and expensive.
@@ -22,7 +22,9 @@ help:
 	@echo "  make graph       Build the cached graph-topology features (~8 min)"
 	@echo "  make embeddings  Build the cached node2vec embeddings"
 	@echo "  make train       Train the model arms and score on validation"
-	@echo "  make eval        Evaluate the engine, write results/engine.json"
+	@echo "  make eval        Freeze the engine, score TEST once, write results/engine.json"
+	@echo "  make figures     Redraw the result charts (cached scores after first run)"
+	@echo "  make kb          Build the ChromaDB index over kb/corpus (~1 min)"
 	@echo "  make agent-eval  Evaluate the triage agent, write results/agent.json"
 	@echo "  make all         Full pipeline from raw data to results"
 	@echo "  make clean       Remove derived data and results (keeps raw downloads)"
@@ -55,15 +57,28 @@ embeddings:
 train:
 	$(PY) src/train.py --arms A,B,C
 
+# Trains arm C (~10 min), scores val and TEST, bootstraps CIs, sweeps the cost ratio,
+# computes pattern-level recall and SHAP, and retrains arms A and B for the PR-curve
+# figure. The frozen booster is cached in models/, so a second run skips the training.
 eval:
-	@echo "NOT IMPLEMENTED: src/evaluate.py (Day 5)" && exit 1
+	$(PY) src/evaluate.py
+
+# Redraws results/figures/. The first run retrains arms A and B (~13 min) and caches
+# their validation scores; after that it is instant. --rebuild forces a retrain.
+figures:
+	$(PY) src/make_figures.py
+
+# Indexes the curated AML corpus. The embedder (ONNX all-MiniLM-L6-v2) runs locally,
+# so this needs no API key -- only the first run downloads the ~41 MB model.
+kb:
+	$(PY) src/kb_index.py --rebuild
 
 agent-eval:
 	@echo "NOT IMPLEMENTED: src/agent/evaluate_agent.py (Day 8)" && exit 1
 
 # The reproducibility claim in the README rests on this target: raw data in,
 # every reported number out, no manual steps.
-all: check data features train eval agent-eval test
+all: check data features train eval figures kb agent-eval test
 
 test:
 	$(PY) -m pytest tests/ -q
@@ -72,6 +87,9 @@ test:
 # That is safe because make_splits.py is deterministic — same input data and same
 # fractions reproduce byte-identical boundaries. The split is frozen in the sense
 # that nothing RECOMPUTES it mid-pipeline, not in the sense that it is unrecoverable.
+# NOTE: models/ is removed too -- the frozen engine is regenerable from `make eval`,
+# and a stale booster paired with fresh features is exactly the kind of mismatch the
+# provenance guards exist to prevent.
 clean:
-	rm -rf data/processed/* results/figures/* results/*.json
+	rm -rf data/processed/* data/chroma/* results/figures/* results/*.json models/*
 	@echo "Removed derived data and results. Raw downloads in data/raw/ kept."

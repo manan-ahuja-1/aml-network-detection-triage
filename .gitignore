@@ -19,7 +19,22 @@ data/
 # a reviewer sees the results without running anything. Only scratch output is ignored.
 results/**/*.tmp
 
+# --- scratch ---
+# Working files and background job logs. Disposable by definition.
+.tmp/
+
 # --- macOS ---
 .DS_Store
 
 docs/LEARNING_NOTES.md
+
+# --- derived model + index artefacts ---
+# The frozen booster is 15 MB and regenerable in ten minutes from `make eval`; the
+# Chroma index is regenerable in one from `make kb`. The corpus they are built from
+# (kb/corpus/, kb/sources.json) IS committed, because a reviewer needs to read exactly
+# what the agent retrieves.
+models/
+
+# Per-row score caches. ~48 MB of float columns, regenerable from `make figures`, and
+# only an input to the PR-curve chart -- the chart itself IS committed.
+results/curve_scores.parquet

@@ -201,13 +201,81 @@ BETWEENNESS_K: Final[int] = 500
 
 
 # ---------------------------------------------------------------------------
+# Frozen engine + explainability (Day 5)
+# ---------------------------------------------------------------------------
+# Arm C won the ablation (val PR-AUC 0.1938 vs 0.1815 for B and 0.1660 for D), so it
+# is the engine. The booster is persisted rather than retrained on demand: Day 6
+# onwards must score alerts with the EXACT model whose test numbers are published,
+# and "retrain and hope it matches" is not a reproducibility story.
+ENGINE_ARM: Final[str] = "C"
+MODELS: Final[Path] = ROOT / "models"
+ENGINE_MODEL: Final[Path] = MODELS / "engine_armC.txt"
+ENGINE_MODEL_META: Final[Path] = MODELS / "engine_armC_meta.json"
+
+# The test split is scored EXACTLY ONCE, on Day 5, after the engine is frozen. This
+# file is the receipt: it records when that happened and the hash of the scores. A
+# second scoring run with different results means the engine changed after freezing,
+# which invalidates every published number.
+ENGINE_JSON: Final[Path] = RESULTS / "engine.json"
+
+# Bootstrap resamples for the 95% CI on test PR-AUC. 2,000 is the usual floor for a
+# percentile interval at 95%; the cost here is seconds, so there is no reason to skimp.
+BOOTSTRAP_RESAMPLES: Final[int] = 2000
+BOOTSTRAP_CI: Final[float] = 0.95
+
+# ---------------------------------------------------------------------------
+# Cost-sensitive operating point (B6)
+# ---------------------------------------------------------------------------
+# The threshold that minimises expected cost depends on how much a missed case costs
+# relative to reviewing a false alert. That ratio is an ASSUMPTION, not a measurement,
+# so the honest presentation is a sensitivity strip across plausible values rather
+# than one invented number. See docs/METHODOLOGY.md for the sourcing of the central
+# value; the grid is what actually gets reported.
+COST_RATIO_GRID: Final[tuple[int, ...]] = (10, 25, 50, 100, 250, 500, 1000)
+COST_RATIO_CENTRAL: Final[int] = 100
+
+# ---------------------------------------------------------------------------
+# Knowledge base + retrieval (Day 6)
+# ---------------------------------------------------------------------------
+# Curated AML reference corpus and its ChromaDB index. The corpus is COMMITTED (it is
+# small text) so a reviewer can read exactly what the agent retrieves; the Chroma
+# index is derived and gitignored.
+KB_DIR: Final[Path] = ROOT / "kb"
+KB_CORPUS: Final[Path] = KB_DIR / "corpus"
+KB_SOURCES: Final[Path] = KB_DIR / "sources.json"
+CHROMA_DIR: Final[Path] = ROOT / "data" / "chroma"
+CHROMA_COLLECTION: Final[str] = "aml_kb"
+
+# Retrieval depth per agent call. Small deliberately: the agent's context should hold
+# a handful of directly relevant red-flag passages, not a wall of regulatory text that
+# buries the alert's own evidence.
+RAG_TOP_K: Final[int] = 5
+
+# ---------------------------------------------------------------------------
+# Triage agent (Day 6-8)
+# ---------------------------------------------------------------------------
+ANTHROPIC_MODEL: Final[str] = "claude-sonnet-4-5-20250929"
+AGENT_TEMPERATURE: Final[float] = 0.0
+AGENT_MAX_TOKENS: Final[int] = 2000
+
+# The eight typologies the simulator injects, plus an explicit "none". The agent
+# classifies into exactly this set so the result can be scored against Patterns.txt
+# as a real 8-class task rather than a subjective rubric (A7).
+TYPOLOGIES: Final[tuple[str, ...]] = (
+    "FAN-IN", "FAN-OUT", "GATHER-SCATTER", "SCATTER-GATHER",
+    "CYCLE", "BIPARTITE", "STACK", "RANDOM", "NONE",
+)
+
+
+# ---------------------------------------------------------------------------
 # Directory bootstrap
 # ---------------------------------------------------------------------------
 # data/ is gitignored, so on a fresh clone these directories do not exist. Creating
 # them at import time — rather than expecting the user to mkdir by hand — means a
 # clone-and-run works immediately, and no pipeline stage dies halfway through on a
 # missing output directory. exist_ok makes it a no-op on every subsequent run.
-for _directory in (DATA_RAW, DATA_PROCESSED, RESULTS, FIGURES, DOCS):
+for _directory in (DATA_RAW, DATA_PROCESSED, RESULTS, FIGURES, DOCS,
+                   MODELS, KB_DIR, KB_CORPUS, CHROMA_DIR):
     _directory.mkdir(parents=True, exist_ok=True)
 
 

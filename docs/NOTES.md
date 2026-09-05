@@ -554,3 +554,297 @@ and is cosmetic: no NaN, no Inf, no all-zero rows, no collapsed dimensions.
 **Next (Day 5):** freeze arm C as the engine, score the **test** split exactly once,
 bootstrap CIs, cost-sensitive threshold, pattern-level recall by typology, the
 single-bank realism experiment, and SHAP for the agent handoff.
+
+---
+
+# Day 5 — Freeze the engine, score test once
+
+## The engine
+
+Arm C, frozen and persisted to `models/engine_armC.txt`. Retraining reproduced the Day 3
+result exactly — **best iteration 2064, validation PR-AUC 0.1938** — which confirms
+LightGBM is deterministic here for a fixed seed and thread count, and means the ablation
+table and this engine describe the same model. `evaluate.py` asserts that agreement and
+warns loudly on drift.
+
+Every later stage loads that file rather than retraining. If the model producing the
+published test numbers is not the object the agent scores with, the numbers describe
+something nobody can inspect.
+
+## The headline: test is half of validation
+
+| | validation | test |
+|---|---|---|
+| PR-AUC | **0.1938** | **0.0949** |
+| 95% CI (2,000 stratified bootstrap resamples) | [0.1700, 0.2190] | [0.0788, 0.1137] |
+| ROC-AUC | 0.8904 | 0.8721 |
+| account P@50 | 88% | 68% |
+| account P@100 | 88% | 50% |
+| account P@200 | 68% | 37.5% |
+| pattern recall @ threshold | 92.3% (155/168) | 83.6% (153/183) |
+| pattern recall @ top-200 accounts | 42.3% | 29.0% |
+
+**The intervals do not overlap.** That is what the bootstrap bought: without it, "0.19 on
+val, 0.09 on test" is a number that might be noise on 1,143 positives. With it, the drop
+is established and has to be explained rather than mentioned.
+
+Note also how much smaller the drop is at the unit compliance actually cares about.
+Transaction-level PR-AUC halves; **pattern-level recall falls only from 92.3% to 83.6%**.
+A ring spans many transactions and an investigator needs one thread to pull, so the
+operational degradation is far milder than the headline metric implies. This is the whole
+argument for §B5, and it only shows up because `Patterns.txt` was parsed on Day 1.
+
+## Why test is half of validation — the hypothesis that was wrong
+
+The obvious explanation was **cold start**: features are fitted on the training window
+only, test sits further from it, so more test accounts should be unseen. Test also has
+356,263 distinct accounts against validation's 236,109 on the same transaction count,
+which looked like confirmation.
+
+It is not the explanation. Measured:
+
+| split | either account unseen | both in graph |
+|---|---|---|
+| val | 0.20% | 98.87% |
+| test | 0.20% | 98.76% |
+
+Coverage is **identical**. The extra test accounts were seen in training; they were simply
+inactive during validation. And restricting to well-covered rows moves both splits by
+about the same proportion, leaving the ratio untouched:
+
+| subset | val | test | test/val |
+|---|---|---|---|
+| all rows | 0.1938 | 0.0949 | 0.49 |
+| both accounts seen | 0.1983 | 0.0984 | 0.50 |
+| both in graph | 0.2135 | 0.1079 | 0.51 |
+
+A constant ratio across every coverage subset means coverage explains none of it.
+
+## Why test is half of validation — what it actually is
+
+Two candidates remained, and they predict different **shapes**.
+
+*Validation optimism* predicts a **step**. Validation was consulted all week — for
+`min_data_in_leaf`, for rejecting `scale_pos_weight`, for dropping `reverse_pagerank`, for
+the arm choice — and early stopping picked iteration 2064 precisely to maximise validation
+average precision. That inflates validation uniformly and leaves test honest, with no
+variation inside either.
+
+*Temporal feature decay* predicts a **slope**. Every account and graph feature describes
+training-window behaviour, and that description ages.
+
+Slicing the whole post-training period into six equal windows separates them:
+
+| window | mostly | base rate | PR-AUC |
+|---|---|---|---|
+| 09-06 13:34 → 09-07 07:18 | val | 0.00099 | **0.2523** |
+| 09-07 07:18 → 09-08 01:02 | val | 0.00108 | 0.1968 |
+| 09-08 01:02 → 09-08 18:46 | val | 0.00120 | 0.1465 |
+| 09-08 18:46 → 09-09 12:30 | test | 0.00079 | 0.0816 |
+| 09-09 12:30 → 09-10 06:14 | test | 0.00093 | 0.0856 |
+| 09-10 06:14 → 09-10 23:59 | test | 0.00254 | 0.1004 |
+
+**It is a slope.** Performance falls monotonically from 0.2523 to 0.1465 *within
+validation itself*, before the test split begins — already most of the way down to test's
+0.0949. The val/test boundary is not where the decline happens; it is just where we cut.
+
+So the mechanism is **feature staleness, not validation optimism**. Roughly, PR-AUC halves
+for every ~1.5 days of distance from the training window.
+
+The final window's uptick to 0.1004 is a base-rate artifact, not a recovery: its base rate
+is 0.00254, about 2.7x the others, and PR-AUC rises with prevalence.
+
+### What this changes
+
+- **The test number is not "the model is worse than we thought."** It is *the model at two
+  to four days of feature staleness*. Reported without the decay curve it would invite
+  exactly the wrong conclusion.
+- **The production implication is concrete**: this engine needs frequent retraining, and a
+  real deployment would recompute account and graph features on a rolling window rather
+  than a frozen one. That is a monitoring requirement with a measured number attached,
+  which is far stronger than the generic "we would monitor for drift" paragraph §B7 asked
+  for.
+- **It does not change the engine.** Arm C was selected on validation, which is correct
+  methodology. Re-choosing after seeing test would turn test into a second validation set.
+  The number stands.
+
+## Operating point
+
+The cost ratio (missed case ÷ false-alert review) is an assumption, not a measurement, so
+it is reported as a sensitivity strip rather than a single tuned threshold. Test:
+
+| cost ratio | alerts | precision | recall |
+|---|---|---|---|
+| 10 | 838 | 18.14% | 13.3% |
+| 25 | 4,455 | 7.38% | 28.8% |
+| 50 | 9,436 | 4.97% | 41.0% |
+| **100** | **14,632** | **3.70%** | **47.4%** |
+| 250 | 31,244 | 2.06% | 56.3% |
+| 500 | 83,004 | 0.97% | 70.6% |
+| 1000 | 159,397 | 0.56% | 78.7% |
+
+The **denominator** is sourced. BPI's 2018 *Getting to Effectiveness* survey of 19 US banks
+reports $2.4bn of BSA/AML spend across 16 million alerts — about **$150 per alert**, and
+that is an upper bound, because the $2.4bn also covers KYC, CTR filing, systems and model
+validation rather than alert review alone. The **numerator cannot be sourced**: nobody
+publishes the expected cost of one missed laundering transaction, penalties are levied for
+programme failures rather than per undetected transaction, and the counterfactual harm is
+unobservable. Sweeping the ratio is the honest response to half a grounded quantity.
+
+For scale, arm R (flag every ACH) raises **122,876** alerts at 0.75% precision for 85.4%
+recall. At ratio 100 the engine reviews **8.4x fewer** alerts.
+
+## Pattern recall by typology (test, at the cost-optimal threshold)
+
+| typology | caught | recall |
+|---|---|---|
+| BIPARTITE | 16/17 | 94.1% |
+| FAN-IN | 17/19 | 89.5% |
+| SCATTER-GATHER | 20/23 | 87.0% |
+| FAN-OUT | 17/20 | 85.0% |
+| GATHER-SCATTER | 33/39 | 84.6% |
+| STACK | 19/23 | 82.6% |
+| RANDOM | 14/17 | 82.4% |
+| **CYCLE** | **17/25** | **68.0%** |
+
+CYCLE is the clear weak spot, and the reason is known rather than mysterious: `in_cycle`
+and `scc_size` are computed on the **static training-window graph**, so a cycle that forms
+during the test window is invisible to them. This is precisely the limitation §B4 flagged
+when time-respecting motifs were scoped and deferred — the deferral has a measured cost,
+which is a better outcome than an unexamined one.
+
+RANDOM at 82.4% is worth stating plainly: the engine is not detecting shape alone. If it
+were, the shapeless control class would collapse. It does not, which means transaction and
+behavioural attributes carry real weight — consistent with the arm B → C lift having been
+only +0.0123 in the first place.
+
+## Caveat carried with every pattern metric
+
+Only **2,554 of the 4,522** laundering transactions surviving truncation belong to a named
+pattern in `Patterns.txt`. The other 1,968 are laundering the generator did not group into
+a ring. Pattern-level recall describes the labelled 56.5%, not all laundering, and
+`results/engine.json` records that alongside the numbers.
+
+## Engineering notes
+
+- **The bootstrap is 9x faster and provably identical.** `average_precision_score` costs
+  ~260 ms on a 1M-row split; 2,000 resamples per split is nine minutes. Sorting once
+  outside the loop and expressing each resample as a multiplicity vector brings it to
+  ~29 ms — agreement with sklearn to **5.6e-17**, verified in `test_engine.py`. The point
+  estimate still comes from sklearn; only the interval uses the fast path.
+- Resampling is **stratified by class**. PR-AUC moves with the base rate, so an
+  unstratified interval at a 1-in-900 rate would partly measure class-balance jitter.
+- `results/engine.json` is written **before** the figure work, and figure failures are
+  caught. The test split is scored once; losing the result to a matplotlib error would
+  force a choice between re-scoring test and having no result.
+- A **SHA-256 digest of the test scores** is recorded (`6b577bcf067ef11f`). A future run
+  producing a different digest means the engine changed after freezing.
+- SHAP via LightGBM's native `pred_contrib=True` — exact TreeSHAP, no `shap` dependency in
+  the path. 200 alerts explained in ~1 s per split, because only each alert's single
+  score-driving transaction is explained rather than the whole split.
+
+## Bug caught: the rules baseline was drawn as a curve
+
+The first PR-curve figure plotted arm R as a **line from (0, 1) to (1, base_rate)**,
+because `precision_recall_curve` interpolates between a binary score's one real threshold
+and the degenerate endpoints. On a log axis that line appeared to *dominate arms A and C*
+across most of the recall range — the exact opposite of what the rules baseline says.
+`baselines.py` had warned about this in a docstring since Day 2 and the figure code
+ignored it. Arm R is now drawn as the single marker it is.
+
+**Next (Day 6):** the triage agent — the knowledge base and its index are built (below);
+the agent core needs the Anthropic key.
+
+---
+
+# Day 6 (part 1) — Knowledge base and retrieval index
+
+The agent needs to say *why* an account looks like laundering, in language a compliance
+function recognises. It could invent that language and it would sound plausible, which is
+the problem. Retrieval grounds each judgement in text a supervisor actually published.
+
+## What was built
+
+`kb/corpus/` — **17 documents, 67 chunks**, every one traceable to an entry in
+`kb/sources.json` with a URL and a retrieval date. `load_corpus()` **raises** if a document
+declares a `source_id` that is not registered, so provenance is enforced rather than
+intended.
+
+Sources retrieved and read, not paraphrased from memory:
+
+| source | what it gives |
+|---|---|
+| FFIEC BSA/AML Manual, Appendix F | funds-transfer and shell-company red flags — the list US examiners work from |
+| FFIEC Appendix G | structuring: 31 USC 5324, 31 CFR 1010.100(xx), the $10,000 CTR and $3,000 recordkeeping thresholds |
+| FFIEC Appendix L | SAR quality: who/what/when/where/why **and how** ("modus operandi") |
+| FinCEN SAR Narrative Guidance (Nov 2003) | the introduction / body / conclusion structure the case-note template mirrors |
+| FinCEN FIN-2014-A005 | the **funnel account** definition and red flags — the regulator's name for our FAN-IN shape |
+| FinCEN FIN-2020-A003 | the unwitting / witting / complicit money-mule taxonomy |
+| 31 CFR § 1020.320 (eCFR) | SAR filing deadline: **30 calendar days**, extendable to 60 if no suspect identified |
+| BPI, *Getting to Effectiveness* (2018) | alert economics — see below |
+| FATF Virtual Assets Red Flag Indicators (2020) | relevant because Bitcoin is one of the fifteen currencies |
+
+The eight typology documents map each dataset shape to its real-world name, the matching
+regulatory red flags, and the specific model features that fire — the §C1 artifact. That
+mapping is **our synthesis and is labelled as such**; it is not presented as regulatory
+text.
+
+## The false-positive statistic, traced to its source
+
+Every vendor page repeating "90–95% of AML alerts are false positives" cites, directly or
+at one remove, the **Bank Policy Institute's 2018 survey of 19 US banks**. Reading the
+primary source gives better numbers than the slogan:
+
+- 16 million alerts reviewed in 2017; **640,000+ SARs filed** — a **4% alert-to-SAR
+  conversion rate**, so 96% of alerts produced no SAR. Slightly *worse* than the figure
+  usually quoted, and computed from BPI's own figures rather than repeated.
+- A median **4% of those SARs** drew law-enforcement follow-up, putting roughly **0.16% of
+  all alerts** on a path to law-enforcement interest.
+- 18% of alerts related to structuring.
+
+## The chunking bug that would not have errored
+
+ChromaDB's default embedder is ONNX all-MiniLM-L6-v2 with a **256-token window**. The
+corpus documents run 1,800–2,400 characters (400–600 tokens). Embedding whole files would
+have stored the complete text while embedding only the opening — retrieval would silently
+never match anything in the second half of any document. Nothing raises.
+
+Documents are therefore split at markdown structure boundaries with the **document title
+prepended to every chunk** (a bare list of funds-transfer red flags embeds almost
+identically to a bare list of shell-company red flags without it). Measured: median 114
+tokens, max 194, **62 tokens of headroom**, nothing truncated.
+
+Getting that measurement right needed one more step. `tokenizer.json` ships a truncation
+setting of **128**, so measuring with the tokenizer as loaded reported *every* long chunk
+as exactly 128 tokens — over-length chunks would have been invisible to the very check
+meant to find them. ChromaDB overrides it to 256 at runtime (its own source comments on
+the discrepancy). `kb_index.token_counts()` disables truncation before measuring, and
+`test_engine.py` asserts against the real 256.
+
+## Retrieval, spot-checked
+
+| query | top hit |
+|---|---|
+| "account receives many small deposits then immediately wires them out" | FinCEN funnel accounts (0.552) |
+| "how long do I have to file a SAR after detecting suspicious activity" | Regulatory framework / 31 CFR 1020.320 (0.690) |
+| "money moving in a circle back to where it started" | Typology: CYCLE (0.544) |
+
+Cosine distance, not the L2 default — these are normalised sentence embeddings and L2
+would let chunk length influence ranking.
+
+## The embedder runs locally
+
+all-MiniLM-L6-v2 executes through onnxruntime on this machine: no API key, no per-query
+cost, reproducible offline. The Anthropic key is needed for the agent, not for retrieval.
+
+Getting the model onto the machine took three attempts and the diagnosis is worth keeping.
+ChromaDB's own S3 download stalled; so did HuggingFace's 90 MB fp32 export — **at byte
+76,214,272 every single time**, across two hosts and three HTTP clients, including on a
+freshly-opened ranged request. A fixed offset across independent connections is an
+environment transfer cap, not a flaky link, so the fix was a smaller file: the 23 MB
+quantized ONNX build, which is what ChromaDB ships anyway. It downloaded in one attempt.
+Placing the six files ChromaDB checks for into its cache directory makes it skip its own
+download entirely.
+
+**Next:** the triage agent core. It needs `ANTHROPIC_API_KEY` in `.env`, which is currently
+empty.

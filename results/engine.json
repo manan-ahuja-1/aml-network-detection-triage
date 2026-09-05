@@ -1,0 +1,659 @@
+{
+  "engine": {
+    "arm": "C",
+    "description": "B + graph topology features",
+    "selected_because": "highest validation PR-AUC of the four arms (C 0.1938 > B 0.1815 > D 0.1660+/-0.0155 > A 0.0527); arm D was rejected on measured evidence across three node2vec seeds and three dimensionalities.",
+    "n_features": 103,
+    "best_iteration": -1
+  },
+  "splits": {
+    "val": {
+      "n": 1015300,
+      "positives": 1083,
+      "base_rate": 0.0010666797990741652,
+      "pr_auc": 0.19375080985793453,
+      "roc_auc": 0.8904206714014812,
+      "precision_at_k": {
+        "50": {
+          "k": 50,
+          "hits": 47,
+          "precision": 0.94,
+          "recall": 0.04339796860572484
+        },
+        "100": {
+          "k": 100,
+          "hits": 88,
+          "precision": 0.88,
+          "recall": 0.08125577100646353
+        },
+        "500": {
+          "k": 500,
+          "hits": 198,
+          "precision": 0.396,
+          "recall": 0.18282548476454294
+        }
+      },
+      "alerts_at_80_recall": {
+        "target_recall": 0.8,
+        "achievable": true,
+        "threshold": 9.561707467101464e-08,
+        "precision": 0.005831021302037499,
+        "recall": 0.801477377654663,
+        "alerts_to_review": 148859
+      },
+      "pr_auc_bootstrap": {
+        "point_estimate": 0.19375080985793453,
+        "ci_level": 0.95,
+        "ci_low": 0.16997771753586544,
+        "ci_high": 0.21897553388368224,
+        "n_resamples": 2000,
+        "bootstrap_mean": 0.19406998114566054,
+        "bootstrap_std": 0.012745330226606181,
+        "stratified": true
+      },
+      "cost_sensitivity": {
+        "10": {
+          "cost_ratio": 10,
+          "threshold": 0.003937949744931406,
+          "alerts": 1498,
+          "true_positives": 300,
+          "false_positives": 1198,
+          "precision": 0.20026702269692923,
+          "recall": 0.2770083102493075,
+          "expected_cost_reviews": 9028.0
+        },
+        "25": {
+          "cost_ratio": 25,
+          "threshold": 0.0002495511091561259,
+          "alerts": 3759,
+          "true_positives": 417,
+          "false_positives": 3342,
+          "precision": 0.11093375897845172,
+          "recall": 0.3850415512465374,
+          "expected_cost_reviews": 19992.0
+        },
+        "50": {
+          "cost_ratio": 50,
+          "threshold": 3.8134003074658696e-05,
+          "alerts": 7621,
+          "true_positives": 512,
+          "false_positives": 7109,
+          "precision": 0.06718278441149456,
+          "recall": 0.4727608494921514,
+          "expected_cost_reviews": 35659.0
+        },
+        "100": {
+          "cost_ratio": 100,
+          "threshold": 1.7606548496511777e-05,
+          "alerts": 11009,
+          "true_positives": 568,
+          "false_positives": 10441,
+          "precision": 0.05159415024071214,
+          "recall": 0.5244690674053555,
+          "expected_cost_reviews": 61941.0
+        },
+        "250": {
+          "cost_ratio": 250,
+          "threshold": 1.9471087533418496e-06,
+          "alerts": 37829,
+          "true_positives": 703,
+          "false_positives": 37126,
+          "precision": 0.01858362631843295,
+          "recall": 0.6491228070175439,
+          "expected_cost_reviews": 132126.0
+        },
+        "500": {
+          "cost_ratio": 500,
+          "threshold": 1.5199883395184123e-06,
+          "alerts": 43137,
+          "true_positives": 723,
+          "false_positives": 42414,
+          "precision": 0.016760553585089367,
+          "recall": 0.667590027700831,
+          "expected_cost_reviews": 222414.0
+        },
+        "1000": {
+          "cost_ratio": 1000,
+          "threshold": 1.7527074588617763e-07,
+          "alerts": 116982,
+          "true_positives": 840,
+          "false_positives": 116142,
+          "precision": 0.007180591885931169,
+          "recall": 0.775623268698061,
+          "expected_cost_reviews": 359142.0
+        }
+      },
+      "account_alerts": {
+        "aggregation": "max",
+        "n_accounts": 236109,
+        "n_productive": 1535,
+        "precision_at_depth": {
+          "50": {
+            "k": 50,
+            "productive": 44,
+            "precision": 0.88,
+            "recall": 0.028664495114006514
+          },
+          "100": {
+            "k": 100,
+            "productive": 88,
+            "precision": 0.88,
+            "recall": 0.05732899022801303
+          },
+          "500": {
+            "k": 500,
+            "productive": 226,
+            "precision": 0.452,
+            "recall": 0.1472312703583062
+          },
+          "200": {
+            "k": 200,
+            "productive": 136,
+            "precision": 0.68,
+            "recall": 0.08859934853420195
+          }
+        }
+      },
+      "pattern_recall_at_threshold": {
+        "n_patterns": 168,
+        "n_caught": 155,
+        "recall": 0.9226190476190477,
+        "n_pattern_transactions": 694,
+        "by_typology": {
+          "BIPARTITE": {
+            "patterns_in_split": 10,
+            "patterns_caught": 9,
+            "recall": 0.9,
+            "transactions_in_split": 51
+          },
+          "CYCLE": {
+            "patterns_in_split": 24,
+            "patterns_caught": 21,
+            "recall": 0.875,
+            "transactions_in_split": 65
+          },
+          "FAN-IN": {
+            "patterns_in_split": 19,
+            "patterns_caught": 19,
+            "recall": 1.0,
+            "transactions_in_split": 64
+          },
+          "FAN-OUT": {
+            "patterns_in_split": 21,
+            "patterns_caught": 18,
+            "recall": 0.8571428571428571,
+            "transactions_in_split": 65
+          },
+          "GATHER-SCATTER": {
+            "patterns_in_split": 26,
+            "patterns_caught": 24,
+            "recall": 0.9230769230769231,
+            "transactions_in_split": 100
+          },
+          "RANDOM": {
+            "patterns_in_split": 17,
+            "patterns_caught": 17,
+            "recall": 1.0,
+            "transactions_in_split": 45
+          },
+          "SCATTER-GATHER": {
+            "patterns_in_split": 23,
+            "patterns_caught": 22,
+            "recall": 0.9565217391304348,
+            "transactions_in_split": 147
+          },
+          "STACK": {
+            "patterns_in_split": 28,
+            "patterns_caught": 25,
+            "recall": 0.8928571428571429,
+            "transactions_in_split": 157
+          }
+        }
+      },
+      "pattern_recall_at_alert_depth": {
+        "n_patterns": 168,
+        "n_caught": 71,
+        "recall": 0.4226190476190476,
+        "by_typology": {
+          "BIPARTITE": {
+            "patterns_in_split": 10,
+            "patterns_caught": 2,
+            "recall": 0.2
+          },
+          "CYCLE": {
+            "patterns_in_split": 24,
+            "patterns_caught": 7,
+            "recall": 0.2916666666666667
+          },
+          "FAN-IN": {
+            "patterns_in_split": 19,
+            "patterns_caught": 6,
+            "recall": 0.3157894736842105
+          },
+          "FAN-OUT": {
+            "patterns_in_split": 21,
+            "patterns_caught": 14,
+            "recall": 0.6666666666666666
+          },
+          "GATHER-SCATTER": {
+            "patterns_in_split": 26,
+            "patterns_caught": 17,
+            "recall": 0.6538461538461539
+          },
+          "RANDOM": {
+            "patterns_in_split": 17,
+            "patterns_caught": 5,
+            "recall": 0.29411764705882354
+          },
+          "SCATTER-GATHER": {
+            "patterns_in_split": 23,
+            "patterns_caught": 13,
+            "recall": 0.5652173913043478
+          },
+          "STACK": {
+            "patterns_in_split": 28,
+            "patterns_caught": 7,
+            "recall": 0.25
+          }
+        }
+      }
+    },
+    "test": {
+      "n": 1015751,
+      "positives": 1143,
+      "base_rate": 0.0011252757811707791,
+      "pr_auc": 0.09487705432398996,
+      "roc_auc": 0.872108650654511,
+      "precision_at_k": {
+        "50": {
+          "k": 50,
+          "hits": 41,
+          "precision": 0.82,
+          "recall": 0.03587051618547681
+        },
+        "100": {
+          "k": 100,
+          "hits": 54,
+          "precision": 0.54,
+          "recall": 0.047244094488188976
+        },
+        "500": {
+          "k": 500,
+          "hits": 114,
+          "precision": 0.228,
+          "recall": 0.09973753280839895
+        }
+      },
+      "alerts_at_80_recall": {
+        "target_recall": 0.8,
+        "achievable": true,
+        "threshold": 5.609115840741989e-08,
+        "precision": 0.005072793196358677,
+        "recall": 0.800524934383202,
+        "alerts_to_review": 180374
+      },
+      "pr_auc_bootstrap": {
+        "point_estimate": 0.09487705432398996,
+        "ci_level": 0.95,
+        "ci_low": 0.07875161307737767,
+        "ci_high": 0.1136764140053469,
+        "n_resamples": 2000,
+        "bootstrap_mean": 0.09548895311891671,
+        "bootstrap_std": 0.008872318158825603,
+        "stratified": true
+      },
+      "cost_sensitivity": {
+        "10": {
+          "cost_ratio": 10,
+          "threshold": 0.02109783067825779,
+          "alerts": 838,
+          "true_positives": 152,
+          "false_positives": 686,
+          "precision": 0.18138424821002386,
+          "recall": 0.13298337707786526,
+          "expected_cost_reviews": 10596.0
+        },
+        "25": {
+          "cost_ratio": 25,
+          "threshold": 0.0002580930057071229,
+          "alerts": 4455,
+          "true_positives": 329,
+          "false_positives": 4126,
+          "precision": 0.07384960718294052,
+          "recall": 0.2878390201224847,
+          "expected_cost_reviews": 24476.0
+        },
+        "50": {
+          "cost_ratio": 50,
+          "threshold": 3.677242664705999e-05,
+          "alerts": 9436,
+          "true_positives": 469,
+          "false_positives": 8967,
+          "precision": 0.04970326409495549,
+          "recall": 0.410323709536308,
+          "expected_cost_reviews": 42667.0
+        },
+        "100": {
+          "cost_ratio": 100,
+          "threshold": 1.5094436537402218e-05,
+          "alerts": 14632,
+          "true_positives": 542,
+          "false_positives": 14090,
+          "precision": 0.03704209950792783,
+          "recall": 0.4741907261592301,
+          "expected_cost_reviews": 74190.0
+        },
+        "250": {
+          "cost_ratio": 250,
+          "threshold": 3.5541867307625903e-06,
+          "alerts": 31244,
+          "true_positives": 644,
+          "false_positives": 30600,
+          "precision": 0.0206119574958392,
+          "recall": 0.5634295713035871,
+          "expected_cost_reviews": 155350.0
+        },
+        "500": {
+          "cost_ratio": 500,
+          "threshold": 4.4450508789972705e-07,
+          "alerts": 83004,
+          "true_positives": 807,
+          "false_positives": 82197,
+          "precision": 0.009722423015758277,
+          "recall": 0.7060367454068242,
+          "expected_cost_reviews": 250197.0
+        },
+        "1000": {
+          "cost_ratio": 1000,
+          "threshold": 7.918459533885826e-08,
+          "alerts": 159397,
+          "true_positives": 900,
+          "false_positives": 158497,
+          "precision": 0.005646279415547344,
+          "recall": 0.7874015748031497,
+          "expected_cost_reviews": 401497.0
+        }
+      },
+      "account_alerts": {
+        "aggregation": "max",
+        "n_accounts": 356263,
+        "n_productive": 1671,
+        "precision_at_depth": {
+          "50": {
+            "k": 50,
+            "productive": 34,
+            "precision": 0.68,
+            "recall": 0.020347097546379412
+          },
+          "100": {
+            "k": 100,
+            "productive": 50,
+            "precision": 0.5,
+            "recall": 0.029922202274087373
+          },
+          "500": {
+            "k": 500,
+            "productive": 125,
+            "precision": 0.25,
+            "recall": 0.07480550568521843
+          },
+          "200": {
+            "k": 200,
+            "productive": 75,
+            "precision": 0.375,
+            "recall": 0.04488330341113106
+          }
+        }
+      },
+      "pattern_recall_at_threshold": {
+        "n_patterns": 183,
+        "n_caught": 153,
+        "recall": 0.8360655737704918,
+        "n_pattern_transactions": 684,
+        "by_typology": {
+          "BIPARTITE": {
+            "patterns_in_split": 17,
+            "patterns_caught": 16,
+            "recall": 0.9411764705882353,
+            "transactions_in_split": 52
+          },
+          "CYCLE": {
+            "patterns_in_split": 25,
+            "patterns_caught": 17,
+            "recall": 0.68,
+            "transactions_in_split": 65
+          },
+          "FAN-IN": {
+            "patterns_in_split": 19,
+            "patterns_caught": 17,
+            "recall": 0.8947368421052632,
+            "transactions_in_split": 71
+          },
+          "FAN-OUT": {
+            "patterns_in_split": 20,
+            "patterns_caught": 17,
+            "recall": 0.85,
+            "transactions_in_split": 74
+          },
+          "GATHER-SCATTER": {
+            "patterns_in_split": 39,
+            "patterns_caught": 33,
+            "recall": 0.8461538461538461,
+            "transactions_in_split": 147
+          },
+          "RANDOM": {
+            "patterns_in_split": 17,
+            "patterns_caught": 14,
+            "recall": 0.8235294117647058,
+            "transactions_in_split": 45
+          },
+          "SCATTER-GATHER": {
+            "patterns_in_split": 23,
+            "patterns_caught": 20,
+            "recall": 0.8695652173913043,
+            "transactions_in_split": 123
+          },
+          "STACK": {
+            "patterns_in_split": 23,
+            "patterns_caught": 19,
+            "recall": 0.8260869565217391,
+            "transactions_in_split": 107
+          }
+        }
+      },
+      "pattern_recall_at_alert_depth": {
+        "n_patterns": 183,
+        "n_caught": 53,
+        "recall": 0.2896174863387978,
+        "by_typology": {
+          "BIPARTITE": {
+            "patterns_in_split": 17,
+            "patterns_caught": 7,
+            "recall": 0.4117647058823529
+          },
+          "CYCLE": {
+            "patterns_in_split": 25,
+            "patterns_caught": 4,
+            "recall": 0.16
+          },
+          "FAN-IN": {
+            "patterns_in_split": 19,
+            "patterns_caught": 4,
+            "recall": 0.21052631578947367
+          },
+          "FAN-OUT": {
+            "patterns_in_split": 20,
+            "patterns_caught": 6,
+            "recall": 0.3
+          },
+          "GATHER-SCATTER": {
+            "patterns_in_split": 39,
+            "patterns_caught": 18,
+            "recall": 0.46153846153846156
+          },
+          "RANDOM": {
+            "patterns_in_split": 17,
+            "patterns_caught": 4,
+            "recall": 0.23529411764705882
+          },
+          "SCATTER-GATHER": {
+            "patterns_in_split": 23,
+            "patterns_caught": 7,
+            "recall": 0.30434782608695654
+          },
+          "STACK": {
+            "patterns_in_split": 23,
+            "patterns_caught": 3,
+            "recall": 0.13043478260869565
+          }
+        }
+      }
+    }
+  },
+  "test_score_digest": "6b577bcf067ef11f",
+  "scored_at": "2026-09-05T13:50:20.811243+00:00",
+  "notes": {
+    "test_scored_once": "The test split was untouched through Days 1-4. Every hyperparameter, feature and arm decision was made on validation. This is the first and only scoring.",
+    "pattern_coverage": "Only 2,554 of the 4,522 laundering transactions surviving truncation belong to a named pattern in HI-Small_Patterns.txt. Pattern-level recall describes that labelled 56.5%, not all laundering.",
+    "cost_ratio_is_an_assumption": "No published figure gives the cost of a missed SAR relative to a false-alert review. The BPI 2018 survey grounds the DENOMINATOR (an upper bound of roughly $150 per alert, from $2.4bn across 16 million alerts), but the numerator is unobservable, so the operating point is reported as a sensitivity strip across ratios rather than as a single tuned threshold."
+  },
+  "figures": [
+    "pr_curves.png"
+  ],
+  "test_drop_diagnosis": {
+    "coverage": {
+      "train": {
+        "n": 3046186,
+        "sender_unseen_pct": 0.0,
+        "receiver_unseen_pct": 0.0,
+        "either_unseen_pct": 0.0,
+        "both_in_graph_pct": 95.71428008663949,
+        "pagerank_missing_pct": 4.28571991336051
+      },
+      "val": {
+        "n": 1015300,
+        "sender_unseen_pct": 0.10450113267014675,
+        "receiver_unseen_pct": 0.0981975770708165,
+        "either_unseen_pct": 0.19649364719787257,
+        "both_in_graph_pct": 98.87117108243869,
+        "pagerank_missing_pct": 0.6753668866344923
+      },
+      "test": {
+        "n": 1015751,
+        "sender_unseen_pct": 0.11971437881921848,
+        "receiver_unseen_pct": 0.09175477060815102,
+        "either_unseen_pct": 0.20467614602397635,
+        "both_in_graph_pct": 98.76416562720588,
+        "pagerank_missing_pct": 0.7624900196997099
+      }
+    },
+    "pr_auc_by_coverage": {
+      "val": {
+        "all rows": {
+          "n": 1015300,
+          "positives": 1083,
+          "base_rate": 0.0010666797990741652,
+          "pr_auc": 0.19375080985793453
+        },
+        "both accounts seen": {
+          "n": 1013305,
+          "positives": 1053,
+          "base_rate": 0.0010391737926882824,
+          "pr_auc": 0.198255260649263
+        },
+        "both in graph": {
+          "n": 1003839,
+          "positives": 895,
+          "base_rate": 0.0008915772349948548,
+          "pr_auc": 0.21352758738505992
+        }
+      },
+      "test": {
+        "all rows": {
+          "n": 1015751,
+          "positives": 1143,
+          "base_rate": 0.0011252757811707791,
+          "pr_auc": 0.09487705432398996
+        },
+        "both accounts seen": {
+          "n": 1013672,
+          "positives": 1098,
+          "base_rate": 0.0010831906178724478,
+          "pr_auc": 0.09837945709971337
+        },
+        "both in graph": {
+          "n": 1003198,
+          "positives": 862,
+          "base_rate": 0.0008592521117466343,
+          "pr_auc": 0.1079115824335406
+        }
+      }
+    },
+    "base_rates": {
+      "val": {
+        "positives": 1083,
+        "positives_with_an_unseen_account_pct": 2.7700831024930745
+      },
+      "test": {
+        "positives": 1143,
+        "positives_with_an_unseen_account_pct": 3.937007874015748
+      }
+    },
+    "time_decay": [
+      {
+        "start": "2022-09-06 13:34:00",
+        "end": "2022-09-07 07:18:10",
+        "mostly": "val",
+        "n": 360405,
+        "positives": 356,
+        "base_rate": 0.0009877776390449632,
+        "pr_auc": 0.25225104700117246
+      },
+      {
+        "start": "2022-09-07 07:18:10",
+        "end": "2022-09-08 01:02:20",
+        "mostly": "val",
+        "n": 360000,
+        "positives": 388,
+        "base_rate": 0.0010777777777777778,
+        "pr_auc": 0.1968244834898585
+      },
+      {
+        "start": "2022-09-08 01:02:20",
+        "end": "2022-09-08 18:46:30",
+        "mostly": "val",
+        "n": 346453,
+        "positives": 416,
+        "base_rate": 0.0012007400715248534,
+        "pr_auc": 0.14653885702339303
+      },
+      {
+        "start": "2022-09-08 18:46:30",
+        "end": "2022-09-09 12:30:40",
+        "mostly": "test",
+        "n": 450315,
+        "positives": 357,
+        "base_rate": 0.0007927783884614103,
+        "pr_auc": 0.08159290774895382
+      },
+      {
+        "start": "2022-09-09 12:30:40",
+        "end": "2022-09-10 06:14:50",
+        "mostly": "test",
+        "n": 371221,
+        "positives": 347,
+        "base_rate": 0.000934753152434803,
+        "pr_auc": 0.08564535837720348
+      },
+      {
+        "start": "2022-09-10 06:14:50",
+        "end": "2022-09-10 23:59:00",
+        "mostly": "test",
+        "n": 142517,
+        "positives": 362,
+        "base_rate": 0.0025400478539402316,
+        "pr_auc": 0.10037587009695949
+      }
+    ]
+  }
+}
