@@ -40,6 +40,7 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -123,11 +124,19 @@ def describe_feature(name: str) -> str:
 
 
 def account_profile(evidence: pd.DataFrame, node_id: str) -> dict:
-    """Aggregate the account's behaviour over the scored window."""
+    """Aggregate one account's behaviour over the scored window.
+
+    Direction is derived HERE from `node_id` rather than read from the `direction`
+    column. That column is written by `alerts.alert_evidence()` relative to whichever
+    account it was called for, and a case dossier pools and deduplicates evidence across
+    several members — so a shared row carries whichever perspective happened to be
+    collected first. Trusting it reported an account that only ever received money as
+    having sent it, which would push the agent toward the wrong topology entirely.
+    """
     external = evidence[evidence["from_id"] != evidence["to_id"]]
     n_self = int(len(evidence) - len(external))
-    out = external[external["direction"] == "OUT"]
-    inn = external[external["direction"] == "IN"]
+    out = external[external["from_id"] == node_id]
+    inn = external[external["to_id"] == node_id]
 
     sent = float(out["paid_usd"].sum()) if "paid_usd" in out else 0.0
     received = float(inn["recv_usd"].sum()) if "recv_usd" in inn else 0.0
@@ -161,10 +170,18 @@ def account_profile(evidence: pd.DataFrame, node_id: str) -> dict:
 
 def evidence_table(evidence: pd.DataFrame, limit: int = EVIDENCE_LIMIT) -> tuple[list[dict], dict]:
     """The citable transactions, plus a summary of anything the cap excluded."""
+    # `model_score` is optional: alerts.alert_evidence() only attaches it when the
+    # caller passed scores. Without it, rank by USD value instead of failing — a
+    # dossier that raises is worse than one that ranks by the second-best signal, and
+    # every other field is still correct.
+    if "model_score" not in evidence.columns:
+        evidence = evidence.assign(model_score=float("nan"))
+    rank_by = ("paid_usd" if evidence["model_score"].isna().all() else "model_score")
+
     shown = evidence
     omitted: dict = {}
     if len(evidence) > limit:
-        shown = evidence.nlargest(limit, "model_score").sort_values("timestamp")
+        shown = evidence.nlargest(limit, rank_by).sort_values("timestamp")
         rest = evidence.drop(shown.index)
         omitted = {
             "count": int(len(rest)),
@@ -172,14 +189,16 @@ def evidence_table(evidence: pd.DataFrame, limit: int = EVIDENCE_LIMIT) -> tuple
                      "cited. Aggregate figures for them are given here only so the "
                      "shown sample is not mistaken for the whole account."),
             "usd_total": round(float(rest["paid_usd"].sum()), 2),
-            "max_model_score": round(float(rest["model_score"].max()), 4),
+            "max_model_score": (None if rest["model_score"].isna().all()
+                                else round(float(rest["model_score"].max()), 4)),
             "distinct_counterparties": int(pd.concat([rest["from_id"], rest["to_id"]])
                                            .nunique()),
         }
 
     rows = []
     for _, r in shown.iterrows():
-        counterparty = r["to_id"] if r["direction"] == "OUT" else r["from_id"]
+        counterparty = (r["to_id"] if r["direction"] in ("OUT", "INTERNAL")
+                        else r["from_id"])
         # 11.6% of this dataset is self-transfers. Presented without a label they read
         # as ordinary outbound legs and would inflate an apparent fan-out; a spoke that
         # goes back to the same account is not a spoke.
@@ -194,7 +213,8 @@ def evidence_table(evidence: pd.DataFrame, limit: int = EVIDENCE_LIMIT) -> tuple
             "currency_sent": str(r["payment_currency"]),
             "currency_received": str(r["receiving_currency"]),
             "payment_format": str(r["payment_format"]),
-            "model_score": round(float(r["model_score"]), 4),
+            "model_score": (None if pd.isna(r["model_score"])
+                            else round(float(r["model_score"]), 4)),
         })
     return rows, omitted
 
@@ -363,3 +383,287 @@ if __name__ == "__main__":
     node = top.index[0]
     d = build(frame, node, "val", scores, top.loc[node], 1, shap.get(node))
     print(json.dumps(d, indent=2, default=str)[:4000])
+
+
+# ---------------------------------------------------------------------------
+# Case dossiers — the unit the agent actually triages (see agent/cases.py)
+# ---------------------------------------------------------------------------
+# A per-account dossier could not answer the question it posed: a spoke that receives
+# one payment looks identical to an ordinary receipt, because the shape lives in the
+# hub. A case dossier contains the hub and the spokes together, so the shape is on the
+# page. Everything below exists to put it there compactly enough to stay affordable.
+
+# How many member accounts get an individual row before the rest are summarised. Cases
+# run to 72 accounts; listing all of them buries the ones that matter under the tail.
+MEMBER_LIMIT = 12
+
+
+def case_topology(case, evidence: pd.DataFrame) -> dict:
+    """Describe the shape of money movement across the whole case.
+
+    This is the field that per-account dossiers could not have, and the reason the
+    pivot was worth making. Naming a fan-out requires seeing the hub AND the spokes; a
+    spoke on its own carries no shape at all.
+    """
+    members = set(case.members)
+    external = evidence[evidence["from_id"] != evidence["to_id"]]
+
+    internal = external[external["from_id"].isin(members)
+                        & external["to_id"].isin(members)]
+    inbound = external[~external["from_id"].isin(members)
+                       & external["to_id"].isin(members)]
+    outbound = external[external["from_id"].isin(members)
+                        & ~external["to_id"].isin(members)]
+
+    # Per-member fan, counting only counterparties OUTSIDE the case, so a hub is
+    # identified by how widely it reaches rather than by case membership.
+    fan_out = (outbound.groupby("from_id", observed=True)["to_id"].nunique()
+               .sort_values(ascending=False))
+    fan_in = (inbound.groupby("to_id", observed=True)["from_id"].nunique()
+              .sort_values(ascending=False))
+
+    return {
+        "member_accounts": len(members),
+        "transactions_between_members": int(len(internal)),
+        "inbound_from_outside": int(len(inbound)),
+        "outbound_to_outside": int(len(outbound)),
+        "distinct_external_payers": int(inbound["from_id"].nunique()) if len(inbound) else 0,
+        "distinct_external_payees": int(outbound["to_id"].nunique()) if len(outbound) else 0,
+        "usd_in_from_outside": round(float(inbound["recv_usd"].sum()), 2) if len(inbound) else 0.0,
+        "usd_out_to_outside": round(float(outbound["paid_usd"].sum()), 2) if len(outbound) else 0.0,
+        "biggest_fan_out": [{"account": a, "external_payees": int(n)}
+                            for a, n in fan_out.head(5).items()],
+        "biggest_fan_in": [{"account": a, "external_payers": int(n)}
+                           for a, n in fan_in.head(5).items()],
+    }
+
+
+def case_shape_query(topology: dict) -> str:
+    """Retrieval query built from the CASE's shape rather than one account's.
+
+    A per-account query for a spoke described "an account that received one payment",
+    which retrieves nothing useful. The same spoke inside its case is part of "one
+    source distributing to many recipients", which retrieves FAN-OUT.
+    """
+    payers, payees = topology["distinct_external_payers"], topology["distinct_external_payees"]
+    internal = topology["transactions_between_members"]
+    hub_out = topology["biggest_fan_out"][0]["external_payees"] if topology["biggest_fan_out"] else 0
+    hub_in = topology["biggest_fan_in"][0]["external_payers"] if topology["biggest_fan_in"] else 0
+
+    if payers > 2 and payees > 2 and internal:
+        return ("funds collected from many sources into intermediary accounts then "
+                "redistributed onward to many destinations, gather scatter, "
+                "consolidation followed by dispersal through a network")
+    if hub_out > 3 and payers <= 2:
+        return ("one source account distributing money to many destination accounts, "
+                "fan out, dispersal of a balance to multiple recipients")
+    if hub_in > 3 and payees <= 2:
+        return ("many source accounts paying into one collection account, fan in, "
+                "funnel account receiving deposits from multiple parties")
+    if internal and payers and payees:
+        return ("money moving through a chain of intermediary accounts between a "
+                "source and a destination, layering, stack of pass-through accounts")
+    if internal >= max(1, topology["member_accounts"]):
+        return ("money circulating between a closed group of accounts and returning "
+                "toward its origin, cycle, round tripping between related parties")
+    return ("a connected group of accounts transacting with each other and with "
+            "outside parties, possible laundering network")
+
+
+def member_summaries(case, evidence: pd.DataFrame, alert_table,
+                     limit: int = MEMBER_LIMIT) -> tuple[list[dict], int]:
+    """One row per member account, highest alert score first."""
+    ranked = alert_table.loc[case.members].sort_values("alert_score", ascending=False)
+    rows = []
+    for node, row in ranked.head(limit).iterrows():
+        own = evidence[(evidence["from_id"] == node) | (evidence["to_id"] == node)]
+        profile = account_profile(own, node)
+        rows.append({
+            "account": node,
+            "alert_score": round(float(row["alert_score"]), 4),
+            "transactions": profile["transactions"],
+            "in": profile["incoming"], "out": profile["outgoing"],
+            "self": profile["self_transfers"],
+            "usd_received": profile["usd_received"], "usd_sent": profile["usd_sent"],
+            "payers": profile["distinct_counterparties_in"],
+            "payees": profile["distinct_counterparties_out"],
+        })
+    return rows, max(0, len(case.members) - limit)
+
+
+def label_case_directions(evidence: pd.DataFrame, members: set[str]) -> pd.DataFrame:
+    """Relabel each row relative to the CASE rather than to one member account.
+
+    IN / OUT / INTERNAL / SELF is the distinction that matters when judging a group:
+    money entering the ring, leaving it, or circulating inside it. Per-account IN/OUT
+    is meaningless once several accounts share the page.
+    """
+    evidence = evidence.copy()
+    from_member = evidence["from_id"].isin(members)
+    to_member = evidence["to_id"].isin(members)
+    evidence["direction"] = np.select(
+        [evidence["from_id"] == evidence["to_id"],
+         from_member & to_member,
+         to_member],
+        ["SELF", "INTERNAL", "IN"],
+        default="OUT",
+    )
+    return evidence
+
+
+# ---------------------------------------------------------------------------
+# Counterparty context — what the accounts JUST OUTSIDE the case were doing
+# ---------------------------------------------------------------------------
+# Measured on the 45-case val run: true-positive loss was 67% for 1-2 account cases,
+# 57% for 3-5, and **0% for cases of 6 or more**. Grouping only helps when the case
+# actually contains the ring, and a case is built from ALERTED accounts — so when most
+# of a ring scored below the alert threshold, a two-account case still shows no shape
+# and the agent closes it for the same reason it closed lone spokes.
+#
+# The missing fact is never inside the case. It is one hop outside: whether the external
+# party on the other side of these transfers is an ordinary counterparty or a hub paying
+# forty other accounts. That is cheap to supply as an aggregate — no extra transactions,
+# just a line per counterparty — so it is supplied for every case rather than reserved
+# for an agentic tool call.
+
+_WINDOW_STATS: dict[str, pd.DataFrame] = {}
+
+
+def window_account_stats(frame: pd.DataFrame, split: str) -> pd.DataFrame:
+    """Per-account activity over the scored window, computed once and reused.
+
+    Deliberately NOT the arm B account table: that is fitted on the training window and
+    describes historical behaviour. This describes what the account did in the window
+    being reviewed, which is what an investigator would pull up.
+    """
+    if split in _WINDOW_STATS:
+        return _WINDOW_STATS[split]
+
+    part = frame[frame["split"] == split]
+    part = part[part["from_id"] != part["to_id"]]
+    out = part.groupby("from_id", observed=True).agg(
+        sent_n=("amount_paid", "size"), payees=("to_id", "nunique"))
+    inn = part.groupby("to_id", observed=True).agg(
+        recv_n=("amount_paid", "size"), payers=("from_id", "nunique"))
+    stats = out.join(inn, how="outer").fillna(0).astype("int32")
+    _WINDOW_STATS[split] = stats
+    return stats
+
+
+def counterparty_context(evidence: pd.DataFrame, members: set[str],
+                         stats: pd.DataFrame, limit: int = 15,
+                         min_reach: int | None = None) -> list[dict]:
+    """External counterparties that are HUBS — nothing else.
+
+    The first version listed every external counterparty ordered by reach, on the
+    reasoning that more context is better. Measured, it was worse: precision over the
+    control fell from +13.3 points to +3.2, because a section present in every case with
+    unremarkable numbers in it reads as background rather than as evidence, and it
+    nudged the agent toward escalating generally instead of discriminating.
+
+    Filtered to reach >= CASE_HUB_REACH the same data is sparse and separating: it fires
+    on 42% of productive val cases and none of the non-productive ones. Same information,
+    different signal-to-noise — which is the whole lesson.
+    """
+    min_reach = config.CASE_HUB_REACH if min_reach is None else min_reach
+    external = evidence[evidence["from_id"] != evidence["to_id"]]
+    others = (set(external["from_id"]) | set(external["to_id"])) - members
+    if not others:
+        return []
+
+    rows = []
+    for node in others:
+        if node not in stats.index:
+            continue
+        r = stats.loc[node]
+        reach = int(r["payers"]) + int(r["payees"])
+        if reach < min_reach:
+            continue
+        rows.append({
+            "account": node,
+            "payers": int(r["payers"]),
+            "payees": int(r["payees"]),
+            "reach": reach,
+            "transactions": int(r["sent_n"] + r["recv_n"]),
+        })
+    rows.sort(key=lambda d: -d["reach"])
+    return rows[:limit]
+
+
+def build_case(frame: pd.DataFrame, case, alert_table, shap: dict,
+               retrieve: bool = True) -> dict:
+    """The complete dossier for one case."""
+    evidence = case.evidence if case.evidence is not None else pd.DataFrame()
+    members = set(case.members)
+    if len(evidence):
+        evidence = label_case_directions(evidence, members)
+    topology = case_topology(case, evidence)
+    rows, members_omitted = member_summaries(case, evidence, alert_table)
+    shown, omitted = evidence_table(evidence)
+
+    # SHAP for the highest-scoring members only. Attributions for a 72-account case
+    # would swamp the evidence they are meant to explain.
+    reasons = []
+    for member in [r["account"] for r in rows[:3]]:
+        entry = shap.get(member)
+        if entry:
+            reasons.append({"account": member,
+                            "driving_txn_id": entry["driving_txn_id"],
+                            "score": round(entry["score"], 4),
+                            "factors": model_reasons(entry)[:6]})
+
+    dossier = {
+        "case": {
+            "case_id": case.case_id,
+            "member_accounts": case.n_members,
+            "max_alert_score": round(case.max_alert_score, 4),
+            "mean_alert_score": round(case.mean_alert_score, 4),
+            "scored_window": case.split,
+        },
+        "topology": topology,
+        "members": rows,
+        "members_omitted": members_omitted,
+        "evidence": shown,
+        "evidence_omitted": omitted,
+        "counterparty_context": (
+            counterparty_context(evidence, members,
+                                 window_account_stats(frame, case.split))
+            if len(evidence) else []),
+        "model_reasons_by_member": reasons,
+        "knowledge_base": [],
+    }
+
+    if retrieve:
+        # Two narrow queries, as for accounts: one for the shape, one for the red flags.
+        # Mixing them into one query measurably degraded retrieval (see shape_query).
+        pooled = {"distinct_counterparties_in": topology["distinct_external_payers"],
+                  "distinct_counterparties_out": topology["distinct_external_payees"],
+                  "flow_through": (topology["usd_out_to_outside"]
+                                   / topology["usd_in_from_outside"]
+                                   if topology["usd_in_from_outside"] else None),
+                  "window_hours": 48.0,
+                  "currencies": sorted(set(evidence["payment_currency"].astype(str)))
+                  if len(evidence) else [],
+                  "distinct_banks": int(pd.concat(
+                      [evidence["from_id"], evidence["to_id"]]).str.split(":").str[0]
+                      .nunique()) if len(evidence) else 0,
+                  "self_transfers": int((evidence["from_id"] == evidence["to_id"]).sum())
+                  if len(evidence) else 0,
+                  "payment_formats": sorted(evidence["payment_format"].astype(str)
+                                            .unique().tolist()) if len(evidence) else []}
+        queries = {"shape": case_shape_query(topology),
+                   "behaviour": behaviour_query(pooled)}
+        merged: dict[str, dict] = {}
+        for label, query in queries.items():
+            for hit in kb_index.retrieve(query, config.RAG_TOP_K):
+                key = hit["title"] + hit["text"][:60]
+                if key not in merged or hit["similarity"] > merged[key]["similarity"]:
+                    merged[key] = {**hit, "matched_on": label}
+        dossier["retrieval_queries"] = queries
+        dossier["knowledge_base"] = [
+            {"title": h["title"], "source": h["source_id"], "url": h["url"],
+             "text": h["text"], "similarity": h["similarity"],
+             "matched_on": h["matched_on"]}
+            for h in sorted(merged.values(), key=lambda h: -h["similarity"])
+        ]
+    return dossier

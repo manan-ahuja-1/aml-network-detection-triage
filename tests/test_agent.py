@@ -19,8 +19,17 @@ SRC = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC))
 
 import config  # noqa: E402
+import splits  # noqa: E402
 from agent import dossier as dossier_mod  # noqa: E402
 from agent import triage  # noqa: E402
+
+needs_data = pytest.mark.skipif(
+    not config.TRANS_PARQUET.exists(), reason="run `make data` first")
+
+
+@pytest.fixture(scope="module")
+def frame():
+    return splits.load_transactions()
 
 
 def make_evidence(n: int, node: str = "1:A", self_transfers: int = 0) -> pd.DataFrame:
@@ -233,3 +242,181 @@ def test_system_prompt_forbids_claiming_a_sar_decision():
     not a style preference."""
     assert "SAR" in triage.SYSTEM_PROMPT
     assert "do NOT decide" in triage.SYSTEM_PROMPT or "You do NOT" in triage.SYSTEM_PROMPT
+
+
+# ---------------------------------------------------------------------------
+# Cases — the unit the agent actually triages
+# ---------------------------------------------------------------------------
+from agent import budget  # noqa: E402
+from agent import cases as cases_mod  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def val_cases(frame):
+    table = pd.read_parquet(config.RESULTS / "alerts_val.parquet")
+    return cases_mod.build_cases(frame, table, "val"), table
+
+
+@needs_data
+def test_cases_partition_the_alert_queue(val_cases):
+    """Every alerted account in exactly one case — none lost, none duplicated.
+
+    An account that falls out of every case is never reviewed, and the queue silently
+    shrinks while every reported rate still looks fine because it is computed over the
+    cases that do exist.
+    """
+    cases, table = val_cases
+    members = [m for c in cases for m in c.members]
+    assert len(members) == len(set(members)), "an account appears in two cases"
+    assert set(members) == set(table.index), "an alerted account is in no case"
+
+
+@needs_data
+def test_no_case_becomes_a_hairball(val_cases):
+    """The bridge cap is load-bearing, not decorative.
+
+    Allowing counterparty-to-counterparty edges collapsed the val queue into a single
+    component of 15,027 accounts — one 'case' containing everything, which is no
+    grouping at all and would not fit in a prompt either.
+    """
+    cases, _ = val_cases
+    biggest = max(c.n_members for c in cases)
+    assert biggest <= config.CASE_MAX_ACCOUNTS, (
+        f"largest case holds {biggest} accounts, over the {config.CASE_MAX_ACCOUNTS} cap")
+
+
+@needs_data
+def test_grouping_actually_reduces_the_queue(val_cases):
+    """The pivot has to buy something: fewer, richer units of review."""
+    cases, table = val_cases
+    assert len(cases) < len(table) / 2, (
+        f"{len(cases)} cases from {len(table)} accounts is barely a reduction")
+
+
+@needs_data
+def test_case_is_productive_if_any_member_is(val_cases):
+    cases, table = val_cases
+    for case in cases[:20]:
+        expected = bool(table.loc[case.members, "is_productive"].any())
+        assert case.is_productive is expected
+
+
+@needs_data
+def test_case_evidence_deduplicates_internal_transactions(val_cases, frame):
+    """A transaction between two members must appear once, not once per member.
+
+    Counted twice it inflates both the apparent volume and the citation whitelist, and
+    the second copy is a transaction ID the agent can cite for a payment that happened
+    only once.
+    """
+    cases, _ = val_cases
+    multi = next(c for c in cases if c.n_members > 2 and c.evidence is not None)
+    assert not multi.evidence.index.duplicated().any()
+
+
+@needs_data
+def test_case_directions_are_relative_to_the_case(val_cases, frame):
+    """IN/OUT must describe the case boundary, not one member's point of view.
+
+    `alert_evidence` writes `direction` for whichever account it was called with, and a
+    case pools rows across members — so a shared row arrives carrying an arbitrary
+    member's perspective. Unfixed, this reported an account that only received money as
+    having sent it.
+    """
+    from agent import dossier as d
+    cases, _ = val_cases
+    case = next(c for c in cases if c.n_members > 2)
+    labelled = d.label_case_directions(case.evidence, set(case.members))
+    members = set(case.members)
+    for _, row in labelled.head(50).iterrows():
+        if row["from_id"] == row["to_id"]:
+            assert row["direction"] == "SELF"
+        elif row["from_id"] in members and row["to_id"] in members:
+            assert row["direction"] == "INTERNAL"
+        elif row["to_id"] in members:
+            assert row["direction"] == "IN"
+        else:
+            assert row["direction"] == "OUT"
+
+
+@needs_data
+def test_account_profile_direction_ignores_the_stored_column(val_cases, frame):
+    """account_profile must derive direction from the account it describes.
+
+    Reading the shared `direction` column is exactly the bug above, one layer down.
+    """
+    from agent import dossier as d
+    cases, _ = val_cases
+    case = next(c for c in cases if c.n_members > 2)
+    node = case.members[0]
+    evidence = case.evidence.copy()
+    evidence["direction"] = "OUT"          # deliberately wrong for every row
+    profile = d.account_profile(evidence, node)
+    external = evidence[evidence["from_id"] != evidence["to_id"]]
+    assert profile["outgoing"] == int((external["from_id"] == node).sum())
+    assert profile["incoming"] == int((external["to_id"] == node).sum())
+
+
+@needs_data
+def test_case_citable_ids_match_the_rendered_prompt(val_cases, frame):
+    """The whitelist and the prompt must not drift apart."""
+    from agent import dossier as d
+    cases, table = val_cases
+    shap = d.load_shap("val")
+    case = next(c for c in cases if c.n_members > 2)
+    dossier = d.build_case(frame, case, table, shap, retrieve=False)
+    prompt = triage.render_case(dossier)
+    for txn_id in d.citable_ids(dossier):
+        assert txn_id in prompt
+
+
+# ---------------------------------------------------------------------------
+# The budget guard
+# ---------------------------------------------------------------------------
+def test_preflight_refuses_a_run_that_would_breach_the_ceiling(monkeypatch, tmp_path):
+    """The ceiling must stop a batch BEFORE it spends, not partway through.
+
+    A 200-alert run once died at alert 72 with credits exhausted, having billed for work
+    that was then partly discarded. Nothing had priced the batch first.
+    """
+    monkeypatch.setattr(config, "SPEND_LEDGER", tmp_path / "ledger.json")
+    monkeypatch.setattr(config, "BUDGET_CEILING_USD", 1.00)
+    with pytest.raises(budget.BudgetExceeded, match="refusing to start"):
+        budget.preflight("test", per_call_usd=0.05, n_calls=100)
+
+
+def test_preflight_allows_a_run_within_budget(monkeypatch, tmp_path):
+    monkeypatch.setattr(config, "SPEND_LEDGER", tmp_path / "ledger.json")
+    monkeypatch.setattr(config, "BUDGET_CEILING_USD", 10.00)
+    assert budget.preflight("test", 0.01, 45)["approved"] is True
+
+
+def test_preflight_requires_the_override_to_name_the_amount(monkeypatch, tmp_path):
+    """Going over budget has to be a typed, specific act — not a boolean flag."""
+    monkeypatch.setattr(config, "SPEND_LEDGER", tmp_path / "ledger.json")
+    monkeypatch.setattr(config, "BUDGET_CEILING_USD", 1.00)
+    with pytest.raises(budget.BudgetExceeded):
+        budget.preflight("test", 0.05, 100, confirm_spend=1.00)   # too small
+    assert budget.preflight("test", 0.05, 100, confirm_spend=99.0)["approved"]
+
+
+def test_ledger_counts_billed_calls_only(monkeypatch, tmp_path):
+    """Cached calls cost nothing. Recording them would inflate the running total and
+    make the guard refuse work that is in fact free."""
+    monkeypatch.setattr(config, "SPEND_LEDGER", tmp_path / "ledger.json")
+    budget.record("t", "m", calls=10, input_tokens=100, output_tokens=50, cost_usd=0.25)
+    budget.record("t", "m", calls=0, input_tokens=0, output_tokens=0, cost_usd=0.0)
+    assert budget.total_spent() == 0.25
+    assert len(budget.load_ledger()) == 1
+
+
+def test_pricing_is_known_for_the_configured_model():
+    """An unknown model must fail loudly rather than report a guessed cost.
+
+    Two constants holding Sonnet 4.5's rates while calling Sonnet 5 made every cost
+    figure ~33% too high for a full day.
+    """
+    price_in, price_out = config.model_pricing(config.ANTHROPIC_MODEL)
+    assert price_in > 0 and price_out > price_in
+    with pytest.raises(KeyError, match="no published price"):
+        config.model_pricing("claude-imaginary-9")

@@ -1,0 +1,51 @@
+{
+  "n_alerts": 12,
+  "queue_mix": {
+    "productive": 6,
+    "non_productive": 6,
+    "productive_share": 0.5
+  },
+  "triage_effect": {
+    "escalated": 6,
+    "closed": 6,
+    "false_positives_closed": 4,
+    "true_positives_closed": 2,
+    "fp_removal_rate": 0.6667,
+    "tp_loss_rate": 0.3333,
+    "review_volume_reduction": 0.5
+  },
+  "baseline_escalate_everything": {
+    "escalated": 12,
+    "precision": 0.5,
+    "recall": 1.0,
+    "false_positives_reviewed": 6
+  },
+  "agent_as_classifier": {
+    "precision": 0.6667,
+    "recall": 0.6667
+  },
+  "hallucination": {
+    "rate": 0.0,
+    "n_with_invalid_citation": 0,
+    "n_citing_nothing": 0,
+    "invalid_source_citations": 0
+  },
+  "classification": {
+    "NONE": 5,
+    "GATHER-SCATTER": 3,
+    "FAN-IN": 3,
+    "SCATTER-GATHER": 1
+  },
+  "confidence": {
+    "high": 11,
+    "medium": 1
+  },
+  "cost": {
+    "model": "claude-haiku-4-5-20251001",
+    "total_usd": 0.0881,
+    "per_alert_usd": 0.00734,
+    "projected_full_queue_usd": 1.47,
+    "median_latency_seconds": 13.5,
+    "billed_calls": 12
+  }
+}

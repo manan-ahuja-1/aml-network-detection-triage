@@ -1,0 +1,823 @@
+[
+  {
+    "unit_id": "CASE-VAL-001",
+    "account": "CASE-VAL-001",
+    "case_id": "CASE-VAL-001",
+    "split": "val",
+    "queue_rank": null,
+    "model": "claude-haiku-4-5-20251001",
+    "effort": "unsupported (requested low)",
+    "result": {
+      "disposition": "escalate",
+      "pattern_classification": "GATHER-SCATTER",
+      "confidence": "high",
+      "risk_rationale": "This case exhibits a classic gather-scatter topology with high-velocity cross-currency layering. One source (6179:8070C89F0) made 22 inbound transfers totaling $1.4M across multiple formats (ACH, cheque, credit card, cash) into accounts 1267:8030004E0 and 222363:80C702290 between Sept 6-8. These intermediary accounts immediately redistributed funds outward: account 1267:8030004E0 sent $10.2M out via 5 transactions with 7 distinct currencies; account 222363:80C702290 received $1.38M and sent $16K out. Internal transfers between case accounts (T2273036, T2273060, T2273043) show classic pass-through behavior with rapid currency conversions (Yuan to Ruble, Yuan to US Dollar, Yuan to Euro). The model's highest scores correctly identified the sender's multi-currency usage (21.95 SHAP weight) and layering-stage transfer patterns (1.57\u20132.11 weight) as the primary risk drivers. The rapid timing, repetitive small inbound deposits immediately followed by outbound dispersal, unexplained multi-currency conversions, and lack of apparent commercial purpose match FFIEC and FinCEN indicators for funnel-account activity.",
+      "cited_transaction_ids": [
+        "T3175089",
+        "T3175091",
+        "T3175088",
+        "T3255576",
+        "T3255573",
+        "T3255574",
+        "T4051856",
+        "T4051857",
+        "T4051858",
+        "T4051855",
+        "T2273039",
+        "T2273060",
+        "T2273043",
+        "T2273036",
+        "T2273035"
+      ],
+      "red_flag_indicators": [
+        "FFIEC Appendix F: Many small, incoming transfers of funds are received...almost immediately all or most are wired to another city or country",
+        "FinCEN FIN-2014-A005 funnel account definition",
+        "FFIEC Appendix F: Funds transfer activity is unexplained, repetitive, or shows unusual patterns",
+        "FFIEC Appendix F: Funds transfers contain limited content and lack related party information"
+      ],
+      "sources_cited": [
+        "ibm-amlsim-typologies",
+        "ffiec-appendix-f"
+      ]
+    },
+    "validation": {
+      "n_cited": 15,
+      "invalid_citations": [],
+      "hallucinated_citation": false,
+      "cited_nothing": false,
+      "invalid_sources": [],
+      "typology_valid": true,
+      "disposition_valid": true
+    },
+    "usage": {
+      "input_tokens": 6515,
+      "output_tokens": 541,
+      "latency_seconds": 15.75,
+      "cost_usd": 0.00922,
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0
+    },
+    "retrieval_queries": {
+      "shape": "funds collected from many sources into intermediary accounts then redistributed onward to many destinations, gather scatter, consolidation followed by dispersal through a network",
+      "behaviour": "transfers in several different currencies; transfers spanning multiple financial institutions; transfers between accounts held by the same party; cash and cheque deposits, placement of currency; wire and ACH funds transfers with no apparent business purpose"
+    },
+    "retrieved_sources": [
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies"
+    ],
+    "cached": false,
+    "is_productive": 1,
+    "n_members": 5
+  },
+  {
+    "unit_id": "CASE-VAL-004",
+    "account": "CASE-VAL-004",
+    "case_id": "CASE-VAL-004",
+    "split": "val",
+    "queue_rank": null,
+    "model": "claude-haiku-4-5-20251001",
+    "effort": "unsupported (requested low)",
+    "result": {
+      "disposition": "close",
+      "pattern_classification": "NONE",
+      "confidence": "high",
+      "risk_rationale": "This case consists of two accounts with a single inter-account transfer (T1932451, $13,501.47 from account 11107 to 232154) followed by four small outbound payments totaling $34.82 to a single external payee. The structure shows no recognizable laundering topology\u2014there is no fan-in, fan-out, or layering chain. The model scored both accounts at 1.0 primarily on the attribution of 7 distinct currencies used by the sender, but examination of the evidence shows only two currencies in the visible transactions (USD and Euro). The four outbound transactions are small, repetitive debit-card and check payments of identical amounts ($15.69 and $1.72 appearing twice each) to the same external payee, consistent with recurring billing, subscription payments, or refunds. The absence of incoming external deposits, the small final outbound amounts, and the repetitive pattern to a single recipient suggest ordinary account operation rather than money laundering.",
+      "cited_transaction_ids": [
+        "T1932451",
+        "T3660598",
+        "T3660597",
+        "T3810880",
+        "T3810881"
+      ],
+      "red_flag_indicators": [],
+      "sources_cited": [
+        "ibm-amlsim-typologies"
+      ]
+    },
+    "validation": {
+      "n_cited": 5,
+      "invalid_citations": [],
+      "hallucinated_citation": false,
+      "cited_nothing": false,
+      "invalid_sources": [],
+      "typology_valid": true,
+      "disposition_valid": true
+    },
+    "usage": {
+      "input_tokens": 4203,
+      "output_tokens": 309,
+      "latency_seconds": 10.14,
+      "cost_usd": 0.005748,
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0
+    },
+    "retrieval_queries": {
+      "shape": "a connected group of accounts transacting with each other and with outside parties, possible laundering network",
+      "behaviour": "transfers spanning multiple financial institutions; transfers between accounts held by the same party; cash and cheque deposits, placement of currency; wire and ACH funds transfers with no apparent business purpose"
+    },
+    "retrieved_sources": [
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "fincen-fin-2014-a005",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "fincen-fin-2014-a005",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies"
+    ],
+    "cached": false,
+    "is_productive": 1,
+    "n_members": 2
+  },
+  {
+    "unit_id": "CASE-VAL-008",
+    "account": "CASE-VAL-008",
+    "case_id": "CASE-VAL-008",
+    "split": "val",
+    "queue_rank": null,
+    "model": "claude-haiku-4-5-20251001",
+    "effort": "unsupported (requested low)",
+    "result": {
+      "disposition": "escalate",
+      "pattern_classification": "GATHER-SCATTER",
+      "confidence": "high",
+      "risk_rationale": "This 18-account case exhibits a classic GATHER-SCATTER topology: 77 external inbound transfers totaling $268,284 funnel into the case group, then 2,009 outbound transactions redistribute $935.9 million to 488 external payees. The hub accounts\u2014particularly 121:8000E1590 (sending $705.7M to 468 payees in just 30 outbound transactions), 222:811D80C30 ($10.4M out to 5 payees), and 48309:811C599A0 ($5.7M out to 2 payees)\u2014show massive disparity between inbound volume and outbound reach, inconsistent with ordinary business operations. Internal transactions like T2821099 ($5.6M single transfer between 119:811C597B0 accounts) and the tight clustering of transactions within a 24-hour window (T2012559 through T4049285, Sept 6-8) combined with high model scores driven by embeddedness in densely connected regions and layering-stage transfer-format activity, indicate deliberate redistribution through intermediaries. The shown sample exhibits unexplained, repetitive fund movement with no apparent links to contracts or services, matching FFIEC red flags for funds transfer activity and the layering stage signature of money laundering.",
+      "cited_transaction_ids": [
+        "T2821099",
+        "T2821101",
+        "T3123485",
+        "T2012559",
+        "T2132654",
+        "T3084283",
+        "T1984631",
+        "T2699458",
+        "T2821100",
+        "T3469217",
+        "T3240079"
+      ],
+      "red_flag_indicators": [
+        "Funds transfer activity is unexplained, repetitive, or shows unusual patterns",
+        "Almost immediately, all or most of the transfers or deposits are wired to another city or country in a manner inconsistent with the customer's business or history",
+        "Payments or receipts with no apparent links to legitimate contracts, goods, or services are received",
+        "Large, incoming funds transfers are received on behalf of a foreign client, with little or no explicit reason"
+      ],
+      "sources_cited": [
+        "ibm-amlsim-typologies",
+        "ffiec-appendix-f"
+      ]
+    },
+    "validation": {
+      "n_cited": 11,
+      "invalid_citations": [],
+      "hallucinated_citation": false,
+      "cited_nothing": false,
+      "invalid_sources": [],
+      "typology_valid": true,
+      "disposition_valid": true
+    },
+    "usage": {
+      "input_tokens": 7418,
+      "output_tokens": 534,
+      "latency_seconds": 13.49,
+      "cost_usd": 0.010088,
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0
+    },
+    "retrieval_queries": {
+      "shape": "funds collected from many sources into intermediary accounts then redistributed onward to many destinations, gather scatter, consolidation followed by dispersal through a network",
+      "behaviour": "funds received are almost immediately transferred out again; transfers spanning multiple financial institutions; transfers between accounts held by the same party; cash and cheque deposits, placement of currency; wire and ACH funds transfers with no apparent business purpose"
+    },
+    "retrieved_sources": [
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies"
+    ],
+    "cached": false,
+    "is_productive": 1,
+    "n_members": 18
+  },
+  {
+    "unit_id": "CASE-VAL-010",
+    "account": "CASE-VAL-010",
+    "case_id": "CASE-VAL-010",
+    "split": "val",
+    "queue_rank": null,
+    "model": "claude-haiku-4-5-20251001",
+    "effort": "unsupported (requested low)",
+    "result": {
+      "disposition": "close",
+      "pattern_classification": "NONE",
+      "confidence": "high",
+      "risk_rationale": "This case consists of two accounts with a single internal transfer of $15,364.21 from account 22155 to account 2454 on 2022-09-06. Account 22155 also conducted a self-transfer (currency conversion from GBP to USD) on the same date. The model's high scores rest almost entirely on attributed factors that do not match the observed transaction pattern: the SHAP values cite 'number of distinct currencies used = 5.0' and 'share of activity in transfer formats = 0.9230769276618958,' but the evidence shows only one internal transfer and one self-conversion\u2014far too limited a sample to support those attributions. The case structure shows no fan-in, fan-out, gather-scatter, or layering topology; money neither enters nor exits the group, and there are no external parties. A single one-hop internal transfer between two accounts is ordinary account-to-account movement with no recognizable laundering shape. The model's attribution appears to reference behavior outside the evidence provided, not the transactions actually shown.",
+      "cited_transaction_ids": [
+        "T2120432"
+      ],
+      "red_flag_indicators": [],
+      "sources_cited": []
+    },
+    "validation": {
+      "n_cited": 1,
+      "invalid_citations": [],
+      "hallucinated_citation": false,
+      "cited_nothing": false,
+      "invalid_sources": [],
+      "typology_valid": true,
+      "disposition_valid": true
+    },
+    "usage": {
+      "input_tokens": 3969,
+      "output_tokens": 291,
+      "latency_seconds": 9.56,
+      "cost_usd": 0.005424,
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0
+    },
+    "retrieval_queries": {
+      "shape": "a connected group of accounts transacting with each other and with outside parties, possible laundering network",
+      "behaviour": "transfers between accounts held by the same party; wire and ACH funds transfers with no apparent business purpose"
+    },
+    "retrieved_sources": [
+      "ffiec-appendix-f",
+      "fincen-fin-2014-a005",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "fincen-fin-2014-a005",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies"
+    ],
+    "cached": false,
+    "is_productive": 1,
+    "n_members": 2
+  },
+  {
+    "unit_id": "CASE-VAL-012",
+    "account": "CASE-VAL-012",
+    "case_id": "CASE-VAL-012",
+    "split": "val",
+    "queue_rank": null,
+    "model": "claude-haiku-4-5-20251001",
+    "effort": "unsupported (requested low)",
+    "result": {
+      "disposition": "close",
+      "pattern_classification": "FAN-IN",
+      "confidence": "high",
+      "risk_rationale": "This case exhibits a classic fan-in structure: account 1047:802A080E0 received 19 inbound transfers from 15 distinct external parties totaling $40,464.81 over a compressed window (Sept 7-8, 2022), then transferred $3,277.93 internally to account 16224:802A06DD0, which immediately wired it out. However, the activity is consistent with legitimate payroll or accounts-payable processing rather than money laundering. The inbound transfers are small, routine ACH and check deposits from ordinary counterparties with low model scores; the timing burst reflects normal batch processing, not structuring; and crucially, there is zero outflow to external parties\u2014the money did not disappear or move to high-risk jurisdictions. The internal transfer and subsequent outflow represent normal fund redistribution, not layering. The model's high scores rest entirely on the presence of ACH format, inbound transaction count, and timing burstiness\u2014factors that are common in legitimate business operations and do not, in combination with the benign external flow pattern, indicate criminal activity.",
+      "cited_transaction_ids": [
+        "T3806090",
+        "T3734329",
+        "T3806093",
+        "T3806085",
+        "T3806094",
+        "T3806083",
+        "T3806084",
+        "T3806096",
+        "T3806088",
+        "T3806092",
+        "T3806091",
+        "T3806095",
+        "T3806089",
+        "T3806087",
+        "T3806086",
+        "T3806082"
+      ],
+      "red_flag_indicators": [],
+      "sources_cited": [
+        "ibm-amlsim-typologies",
+        "fincen-fin-2014-a005"
+      ]
+    },
+    "validation": {
+      "n_cited": 16,
+      "invalid_citations": [],
+      "hallucinated_citation": false,
+      "cited_nothing": false,
+      "invalid_sources": [],
+      "typology_valid": true,
+      "disposition_valid": true
+    },
+    "usage": {
+      "input_tokens": 5177,
+      "output_tokens": 395,
+      "latency_seconds": 12.36,
+      "cost_usd": 0.007152,
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0
+    },
+    "retrieval_queries": {
+      "shape": "many source accounts paying into one collection account, fan in, funnel account receiving deposits from multiple parties",
+      "behaviour": "transfers spanning multiple financial institutions; cash and cheque deposits, placement of currency; wire and ACH funds transfers with no apparent business purpose"
+    },
+    "retrieved_sources": [
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "fincen-fin-2014-a005",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies"
+    ],
+    "cached": false,
+    "is_productive": 0,
+    "n_members": 2
+  },
+  {
+    "unit_id": "CASE-VAL-013",
+    "account": "CASE-VAL-013",
+    "case_id": "CASE-VAL-013",
+    "split": "val",
+    "queue_rank": null,
+    "model": "claude-haiku-4-5-20251001",
+    "effort": "unsupported (requested low)",
+    "result": {
+      "disposition": "escalate",
+      "pattern_classification": "FAN-IN",
+      "confidence": "high",
+      "risk_rationale": "This case exhibits a classic fan-in (funnel account) topology: 56 external payers transferred $269,530.33 into two primary collection accounts (41407:80F4A5330 and 240229:80F49D900) over a compressed 38-minute window on 2022-09-07, with minimal onward movement ($7,344.12 total out, all to external parties or one internal transfer). The evidence shows rapid, repetitive small-to-medium ACH deposits in Swiss Francs from dozens of distinct counterparties\u2014a signature structuring pattern\u2014followed by near-immediate withdrawal. The internal transfer T3673420 ($2,980.56) and T3683230 ($2,005.51) between the collection accounts suggest consolidation and layering, consistent with deliberate fund obfuscation. The SHAP model flagged the sender's use of 7 distinct currencies and 92% share of activity in transfer formats (layering stage) as primary risk drivers, which align with money-laundering methodologies. This matches FinCEN FIN-2014-A005 funnel-account red flags and FFIEC Appendix F indicators for unexplained, repetitive funds transfer activity.",
+      "cited_transaction_ids": [
+        "T3673420",
+        "T3683230",
+        "T3673409",
+        "T3673427",
+        "T3673390"
+      ],
+      "red_flag_indicators": [
+        "FinCEN FIN-2014-A005 funnel account definition",
+        "FFIEC Appendix F: many small incoming transfers followed by rapid onward movement",
+        "FFIEC Appendix F: unexplained, repetitive funds transfer activity",
+        "FFIEC Appendix F: transfers in manner inconsistent with customer history (no KYC available to confirm legitimacy)"
+      ],
+      "sources_cited": [
+        "fincen-fin-2014-a005",
+        "ffiec-appendix-f",
+        "ibm-amlsim-typologies"
+      ]
+    },
+    "validation": {
+      "n_cited": 5,
+      "invalid_citations": [],
+      "hallucinated_citation": false,
+      "cited_nothing": false,
+      "invalid_sources": [],
+      "typology_valid": true,
+      "disposition_valid": true
+    },
+    "usage": {
+      "input_tokens": 6845,
+      "output_tokens": 481,
+      "latency_seconds": 13.48,
+      "cost_usd": 0.00925,
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0
+    },
+    "retrieval_queries": {
+      "shape": "many source accounts paying into one collection account, fan in, funnel account receiving deposits from multiple parties",
+      "behaviour": "transfers spanning multiple financial institutions; wire and ACH funds transfers with no apparent business purpose"
+    },
+    "retrieved_sources": [
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "fincen-fin-2014-a005",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies"
+    ],
+    "cached": false,
+    "is_productive": 0,
+    "n_members": 3
+  },
+  {
+    "unit_id": "CASE-VAL-018",
+    "account": "CASE-VAL-018",
+    "case_id": "CASE-VAL-018",
+    "split": "val",
+    "queue_rank": null,
+    "model": "claude-haiku-4-5-20251001",
+    "effort": "unsupported (requested low)",
+    "result": {
+      "disposition": "escalate",
+      "pattern_classification": "FAN-IN",
+      "confidence": "high",
+      "risk_rationale": "Account 15980:8048538A0 received 19 inbound ACH transfers from 19 distinct external parties totalling $5,637,733.30 in a single 28-minute window on 2022-09-07, then immediately transferred $4,175.72 to account 5836:804853540 (T3656299). The inbound collection exhibits the classic funnel-account pattern: many small deposits from unrelated counterparties, rapid aggregation into a single account, and immediate onward movement. Two of the inbound transactions\u2014T3656306 ($511,131.88 from cpty 4766) and T3656314 ($5,074,291.03 from cpty 12719)\u2014represent large concentrations that dominate the total, suggesting layered or coordinated sources. The model's high scores are driven by the ACH payment format and the multi-currency attribute on the sender side, which conflicts with the USD-only evidence shown; this attribution disagreement suggests the model is flagging the *collection* behavior itself rather than any individual counterparty risk. The case structure matches FinCEN's FAN-IN / funnel-account definition precisely: multiple inbound parties, concentration in seconds, and onward dispersal within the same day.",
+      "cited_transaction_ids": [
+        "T3656303",
+        "T3656301",
+        "T3656308",
+        "T3656295",
+        "T3656300",
+        "T3656296",
+        "T3656298",
+        "T3656305",
+        "T3656306",
+        "T3656307",
+        "T3656297",
+        "T3656299",
+        "T3656312",
+        "T3656313",
+        "T3656310",
+        "T3656304",
+        "T3656314",
+        "T3656302",
+        "T3656311",
+        "T3656309"
+      ],
+      "red_flag_indicators": [
+        "Funnel accounts: definition and red flags (FAN-IN shape: many inbound counterparties, rapid onward movement)",
+        "Funds transfer activity: many small incoming transfers received, with onward movement in manner inconsistent with customer history"
+      ],
+      "sources_cited": [
+        "fincen-fin-2014-a005",
+        "ibm-amlsim-typologies",
+        "ffiec-appendix-f"
+      ]
+    },
+    "validation": {
+      "n_cited": 20,
+      "invalid_citations": [],
+      "hallucinated_citation": false,
+      "cited_nothing": false,
+      "invalid_sources": [],
+      "typology_valid": true,
+      "disposition_valid": true
+    },
+    "usage": {
+      "input_tokens": 5178,
+      "output_tokens": 518,
+      "latency_seconds": 15.2,
+      "cost_usd": 0.007768,
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0
+    },
+    "retrieval_queries": {
+      "shape": "many source accounts paying into one collection account, fan in, funnel account receiving deposits from multiple parties",
+      "behaviour": "transfers spanning multiple financial institutions; wire and ACH funds transfers with no apparent business purpose"
+    },
+    "retrieved_sources": [
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "fincen-fin-2014-a005",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies"
+    ],
+    "cached": false,
+    "is_productive": 0,
+    "n_members": 2
+  },
+  {
+    "unit_id": "CASE-VAL-023",
+    "account": "CASE-VAL-023",
+    "case_id": "CASE-VAL-023",
+    "split": "val",
+    "queue_rank": null,
+    "model": "claude-haiku-4-5-20251001",
+    "effort": "unsupported (requested low)",
+    "result": {
+      "disposition": "close",
+      "pattern_classification": "NONE",
+      "confidence": "high",
+      "risk_rationale": "This case involves two accounts that exchanged funds between themselves and conducted small, routine transactions with a single external party. Account 15231:802A667C0 received $1,042.73 in four small deposits from one external source (cpty 1490:800B6B720), then transferred most of that ($6,716.23) internally to account 26624:802A679B0 via T3317678. Account 26624:802A679B0 then disbursed the received funds ($7,362.19 total) in six small outgoing transactions, mostly to a single external counterparty (cpty 3335:80831EC40), with the remainder passed back internally. The activity forms no recognizable laundering topology: there is no fan-out/fan-in, no scatter-gather, no layering chain. The model scored both accounts highly (0.987) based on the internal transfer T3317678 alone, driven largely by the high share-of-funds-passed-on ratio and ACH format; however, the transaction record shows this was a one-time inter-account transfer between two accounts in the same case, not a laundering signature. The outgoing transactions are small, repetitive, and denominated in consistent amounts ($453.68 and $16.71 recurring pairs), suggesting routine small payments rather than deliberate layering. All counterparties are stable (one inbound source, one outbound destination) and the money flows are transparent and traceable. The pattern is consistent with a straightforward sweep of received funds between related accounts for operational or administrative purposes.",
+      "cited_transaction_ids": [
+        "T3317678",
+        "T3337061",
+        "T3337060",
+        "T3926359",
+        "T3926360",
+        "T3138153",
+        "T3138152",
+        "T3288828",
+        "T3288829",
+        "T4005478",
+        "T4005479"
+      ],
+      "red_flag_indicators": [],
+      "sources_cited": []
+    },
+    "validation": {
+      "n_cited": 11,
+      "invalid_citations": [],
+      "hallucinated_citation": false,
+      "cited_nothing": false,
+      "invalid_sources": [],
+      "typology_valid": true,
+      "disposition_valid": true
+    },
+    "usage": {
+      "input_tokens": 4117,
+      "output_tokens": 467,
+      "latency_seconds": 8.72,
+      "cost_usd": 0.006452,
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0
+    },
+    "retrieval_queries": {
+      "shape": "money moving through a chain of intermediary accounts between a source and a destination, layering, stack of pass-through accounts",
+      "behaviour": "funds received are almost immediately transferred out again; transfers spanning multiple financial institutions; cash and cheque deposits, placement of currency; wire and ACH funds transfers with no apparent business purpose"
+    },
+    "retrieved_sources": [
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies"
+    ],
+    "cached": false,
+    "is_productive": 0,
+    "n_members": 2
+  },
+  {
+    "unit_id": "CASE-VAL-030",
+    "account": "CASE-VAL-030",
+    "case_id": "CASE-VAL-030",
+    "split": "val",
+    "queue_rank": null,
+    "model": "claude-haiku-4-5-20251001",
+    "effort": "unsupported (requested low)",
+    "result": {
+      "disposition": "escalate",
+      "pattern_classification": "SCATTER-GATHER",
+      "confidence": "medium",
+      "risk_rationale": "Account 249176:812A70ED0 received two inbound transfers from external party 48755:81282AFF0 (T3674080, T4029560; $6,565.76 total), then immediately dispersed nearly all funds across three outbound transactions to an external party (T3361607-T3361609; $796.74 of $6,565.76). The bulk of received funds ($11,196.35) was passed internal to account 49508:812A70E80 (T2485803), which then dispersed $797.29 outbound to the same external payee. The pattern matches SCATTER-GATHER topology: funds collected into one account, then split between onward transfer and pass-through to a second account that disperses further. The model's high score on T2485803 correctly reflects the exceptional pass-through ratio (97.1% of received funds sent onward), ACH format, and timing within 1 hour of initial receipt. While individual transaction amounts are modest and the currency (Saudi Riyal) is consistent, the defining characteristic\u2014rapid collection followed by dispersal with minimal resting\u2014aligns with layering-stage fund movement. The case structure shows money flowing through rather than resting in these accounts.",
+      "cited_transaction_ids": [
+        "T3674080",
+        "T4029560",
+        "T3361607",
+        "T3361608",
+        "T3361609",
+        "T2485803"
+      ],
+      "red_flag_indicators": [
+        "Almost immediately, all or most of the transfers or deposits are wired to another city or country in a manner inconsistent with the customer's business or history.",
+        "Funds transfer activity is unexplained, repetitive, or shows unusual patterns.",
+        "Funds transfers are sent or received from the same person to or from different accounts."
+      ],
+      "sources_cited": [
+        "ibm-amlsim-typologies",
+        "ffiec-appendix-f"
+      ]
+    },
+    "validation": {
+      "n_cited": 6,
+      "invalid_citations": [],
+      "hallucinated_citation": false,
+      "cited_nothing": false,
+      "invalid_sources": [],
+      "typology_valid": true,
+      "disposition_valid": true
+    },
+    "usage": {
+      "input_tokens": 3959,
+      "output_tokens": 448,
+      "latency_seconds": 13.62,
+      "cost_usd": 0.006199,
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0
+    },
+    "retrieval_queries": {
+      "shape": "money moving through a chain of intermediary accounts between a source and a destination, layering, stack of pass-through accounts",
+      "behaviour": "transfers spanning multiple financial institutions; cash and cheque deposits, placement of currency; wire and ACH funds transfers with no apparent business purpose"
+    },
+    "retrieved_sources": [
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies"
+    ],
+    "cached": false,
+    "is_productive": 1,
+    "n_members": 2
+  },
+  {
+    "unit_id": "CASE-VAL-032",
+    "account": "CASE-VAL-032",
+    "case_id": "CASE-VAL-032",
+    "split": "val",
+    "queue_rank": null,
+    "model": "claude-haiku-4-5-20251001",
+    "effort": "unsupported (requested low)",
+    "result": {
+      "disposition": "escalate",
+      "pattern_classification": "GATHER-SCATTER",
+      "confidence": "high",
+      "risk_rationale": "Account 22:800241D60 received $46,823.20 from a single external source (23:800230480) across six transactions between 2022-09-07 and 2022-09-08, then immediately dispersed $7.1M across 44 outbound transactions to 10 distinct external payees over the same two-day window, including to high-risk counterparties (6052:8057A9920, 24811:811A90B70, 1501:80097B4A0). A small internal transfer of $11,986.14 moved to account 1601:800669CE0, which received it and held it without onward activity. The rapid collection-then-dispersal cycle, the extreme disparity between inbound and outbound volume, the fragmentation across multiple counterparties and payment methods (ACH, cheque, wire, cash, credit card), and the cross-currency activity (Euro, US Dollar, Saudi Riyal, Yuan) all match the gather-scatter topology characteristic of layering and mule-network operations. The evidence shows substantive transaction flow rather than sample bias; the model's attribution to the ACH payment format, three distinct currencies, and the sender's high distinct-currency count reflects genuine structural risk. No legitimate business explanation accounts for consolidating ~$47k and immediately dispersing it 150x larger across unrelated parties with no apparent commercial links.",
+      "cited_transaction_ids": [
+        "T2234568",
+        "T3463428",
+        "T3463430",
+        "T3463429",
+        "T3118458",
+        "T3118456",
+        "T3118457",
+        "T3216757",
+        "T3216758",
+        "T3216760",
+        "T3216761",
+        "T3216759",
+        "T3424774",
+        "T3424775",
+        "T3424773",
+        "T3770337",
+        "T3770336",
+        "T3770335",
+        "T3590902",
+        "T3205472",
+        "T3346991",
+        "T3346992",
+        "T3809819",
+        "T3809820"
+      ],
+      "red_flag_indicators": [
+        "funds transfer activity - many small incoming transfers immediately wired outward in pattern inconsistent with business",
+        "funds transfer activity - unexplained, repetitive, unusual patterns",
+        "gather-scatter topology - collection into intermediary followed by dispersal to many destinations"
+      ],
+      "sources_cited": [
+        "ibm-amlsim-typologies",
+        "ffiec-appendix-f"
+      ]
+    },
+    "validation": {
+      "n_cited": 24,
+      "invalid_citations": [],
+      "hallucinated_citation": false,
+      "cited_nothing": false,
+      "invalid_sources": [],
+      "typology_valid": true,
+      "disposition_valid": true
+    },
+    "usage": {
+      "input_tokens": 6543,
+      "output_tokens": 587,
+      "latency_seconds": 16.75,
+      "cost_usd": 0.009478,
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0
+    },
+    "retrieval_queries": {
+      "shape": "one source account distributing money to many destination accounts, fan out, dispersal of a balance to multiple recipients",
+      "behaviour": "funds received are almost immediately transferred out again; transfers in several different currencies; transfers spanning multiple financial institutions; transfers between accounts held by the same party; cash and cheque deposits, placement of currency; wire and ACH funds transfers with no apparent business purpose"
+    },
+    "retrieved_sources": [
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies"
+    ],
+    "cached": false,
+    "is_productive": 1,
+    "n_members": 2
+  },
+  {
+    "unit_id": "CASE-VAL-036",
+    "account": "CASE-VAL-036",
+    "case_id": "CASE-VAL-036",
+    "split": "val",
+    "queue_rank": null,
+    "model": "claude-haiku-4-5-20251001",
+    "effort": "unsupported (requested low)",
+    "result": {
+      "disposition": "close",
+      "pattern_classification": "NONE",
+      "confidence": "high",
+      "risk_rationale": "This case involves a single internal transfer of $8,863.38 between two accounts on 2022-09-08. Account 11657:8020791A0 received the funds via ACH; account 1655:802078880 sent them. No funds entered or exited the case group from external parties, and no layering or pass-through behavior is evident\u2014the money arrived in one account and moved to the other in a single transaction. The model's high scores are driven primarily by the ACH payment format and transaction amount, which are flagged as generic risk factors, but neither suggests illicit activity in isolation. This is a straightforward internal fund movement with no evidence of funnel account activity, mule network behavior, or any laundering topology. Without external inflows, multiple counterparties, or unusual timing patterns relative to account purpose (which we cannot assess from transaction data alone), this activity is consistent with ordinary inter-account reconciliation or operational cash management.",
+      "cited_transaction_ids": [
+        "T4043733"
+      ],
+      "red_flag_indicators": [],
+      "sources_cited": [
+        "ibm-amlsim-typologies",
+        "fincen-fin-2014-a005"
+      ]
+    },
+    "validation": {
+      "n_cited": 1,
+      "invalid_citations": [],
+      "hallucinated_citation": false,
+      "cited_nothing": false,
+      "invalid_sources": [],
+      "typology_valid": true,
+      "disposition_valid": true
+    },
+    "usage": {
+      "input_tokens": 3791,
+      "output_tokens": 282,
+      "latency_seconds": 9.4,
+      "cost_usd": 0.005201,
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0
+    },
+    "retrieval_queries": {
+      "shape": "a connected group of accounts transacting with each other and with outside parties, possible laundering network",
+      "behaviour": "wire and ACH funds transfers with no apparent business purpose"
+    },
+    "retrieved_sources": [
+      "fincen-fin-2014-a005",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "fincen-fin-2014-a005",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f"
+    ],
+    "cached": false,
+    "is_productive": 0,
+    "n_members": 2
+  },
+  {
+    "unit_id": "CASE-VAL-042",
+    "account": "CASE-VAL-042",
+    "case_id": "CASE-VAL-042",
+    "split": "val",
+    "queue_rank": null,
+    "model": "claude-haiku-4-5-20251001",
+    "effort": "unsupported (requested low)",
+    "result": {
+      "disposition": "close",
+      "pattern_classification": "NONE",
+      "confidence": "high",
+      "risk_rationale": "Account 24132:811456B50 received seven incoming transfers totaling $9.43M from seven distinct external counterparties on 2022-09-08, then transferred $19,635.02 internally to account 3144:8114535D0, which made no further movements. While the volume is substantial, the case structure shows no laundering topology: funds entered and largely remained in the primary account with only a small fraction moving onward, and critically, no outflows to external parties occurred. The model's high scores are driven almost entirely by payment format (ACH) and the volume of distinct inbound counterparties, but these features alone, absent onward dispersal or rapid outflow to third parties, are consistent with ordinary business receipt of funds (e.g., supplier payments, service revenues, or distributions from a parent entity). The internal transfer to the secondary account represents less than 0.2% of inbound value and appears to be an isolated allocation rather than evidence of layering or structuring.",
+      "cited_transaction_ids": [
+        "T3993700",
+        "T3993695",
+        "T3993694",
+        "T3993697",
+        "T3993701",
+        "T3993696",
+        "T3993699",
+        "T3993698"
+      ],
+      "red_flag_indicators": [],
+      "sources_cited": [
+        "ibm-amlsim-typologies",
+        "fincen-fin-2014-a005",
+        "ffiec-appendix-f"
+      ]
+    },
+    "validation": {
+      "n_cited": 8,
+      "invalid_citations": [],
+      "hallucinated_citation": false,
+      "cited_nothing": false,
+      "invalid_sources": [],
+      "typology_valid": true,
+      "disposition_valid": true
+    },
+    "usage": {
+      "input_tokens": 4482,
+      "output_tokens": 334,
+      "latency_seconds": 10.92,
+      "cost_usd": 0.006152,
+      "price_in_per_mtok": 1.0,
+      "price_out_per_mtok": 5.0
+    },
+    "retrieval_queries": {
+      "shape": "many source accounts paying into one collection account, fan in, funnel account receiving deposits from multiple parties",
+      "behaviour": "transfers spanning multiple financial institutions; cash and cheque deposits, placement of currency; wire and ACH funds transfers with no apparent business purpose"
+    },
+    "retrieved_sources": [
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ffiec-appendix-f",
+      "ffiec-appendix-f",
+      "ibm-amlsim-typologies",
+      "fincen-fin-2014-a005",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies",
+      "ibm-amlsim-typologies"
+    ],
+    "cached": false,
+    "is_productive": 0,
+    "n_members": 2
+  }
+]

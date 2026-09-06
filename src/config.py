@@ -254,7 +254,19 @@ RAG_TOP_K: Final[int] = 5
 # ---------------------------------------------------------------------------
 # Triage agent (Day 6-8)
 # ---------------------------------------------------------------------------
-ANTHROPIC_MODEL: Final[str] = "claude-sonnet-5"
+# Haiku 4.5 rather than Sonnet 5: half the price ($1/$5 against $2/$10 per MTok) on a
+# task that is structured extraction and judgement over a prepared dossier rather than
+# open-ended reasoning. Whether that costs quality is measured, not assumed — see the
+# model/effort comparison in docs/NOTES.md.
+ANTHROPIC_MODEL: Final[str] = "claude-haiku-4-5-20251001"
+
+# `output_config.effort` — low | medium | high | xhigh | max, defaulting to high.
+#
+# This is the single largest cost lever in the project and it was missed for a whole
+# day. Measured on the 72-alert Sonnet run: the emitted JSON is about 412 tokens, while
+# 2,291 output tokens were billed. **82% of output cost was reasoning nobody reads.**
+# Output is two thirds of the total, so effort dominates the bill.
+AGENT_EFFORT: Final[str] = "low"
 
 # DELIBERATELY UNUSED. `messages.create` no longer accepts `temperature` — sampling is
 # not a knob the current API exposes — so this project cannot and does not claim
@@ -276,6 +288,77 @@ TYPOLOGIES: Final[tuple[str, ...]] = (
     "FAN-IN", "FAN-OUT", "GATHER-SCATTER", "SCATTER-GATHER",
     "CYCLE", "BIPARTITE", "STACK", "RANDOM", "NONE",
 )
+
+# ---------------------------------------------------------------------------
+# Case construction — the unit the agent actually triages
+# ---------------------------------------------------------------------------
+# Per-ACCOUNT triage was built first and measured not to work: an account that receives
+# one payment and does nothing else is indistinguishable from an ordinary receipt when
+# you can only see its own rows, even though it may be the receiving spoke of a fan-out.
+# The agent said so itself, and no prompt fixes a missing fact.
+#
+# So alerts are grouped into CASES — connected clusters of alerted accounts — and the
+# agent triages a case. That is also the unit Patterns.txt labels, the unit an
+# investigator opens, and (usefully) about 4.4x fewer LLM calls.
+#
+# Two alerted accounts join the same case if they transact directly, or if they share a
+# non-alerted counterparty. The cap on that second rule matters: without it, one
+# popular counterparty chains everything together. Measured on the val queue, including
+# counterparty-to-counterparty edges produced a single 15,027-account component; the
+# rule below gives 45 cases with a median of 2 accounts and a maximum of 62.
+CASE_BRIDGE_MAX_SHARED: Final[int] = 25
+CASE_MAX_ACCOUNTS: Final[int] = 100
+
+# An external counterparty dealing with at least this many distinct parties across the
+# review window is surfaced to the agent as a HUB. Tuned on validation, and the reason
+# for a threshold rather than a listing is measured: showing every external counterparty
+# (median 5 per case) made the agent WORSE — precision over the escalate-everything
+# control fell from +13.3 points to +3.2, because a table that is populated for every
+# case carries no signal. As a sparse flag the same data separates cleanly:
+#
+#     reach >= 10 fires on 42% of productive cases and 0% of non-productive ones
+#
+# on 24 productive and 21 non-productive val cases, so the interval on that 0% is wide.
+CASE_HUB_REACH: Final[int] = 10
+
+# ---------------------------------------------------------------------------
+# Budget guard
+# ---------------------------------------------------------------------------
+# A hard ceiling on API spend for the remainder of the project, enforced rather than
+# remembered. Every billed call is appended to the ledger, and a batch that would push
+# the cumulative total past the ceiling refuses to start instead of discovering the
+# problem partway through — which is exactly what happened when a 200-alert run died at
+# 72 with credits exhausted, having already billed for work that was then discarded.
+BUDGET_CEILING_USD: Final[float] = 10.00
+SPEND_LEDGER: Final[Path] = RESULTS / "spend_ledger.json"
+
+# Published rates, USD per million tokens, verified 2026-09-06 against
+# https://platform.claude.com/docs/en/about-claude/pricing
+#
+# This replaces two loose constants that held $3/$15 — Sonnet 4.5's rates, applied to
+# Sonnet 5 calls. Every cost figure reported before this fix was ~33% too high. A table
+# keyed by model id means switching models cannot silently mis-price a run again.
+MODEL_PRICING: Final[dict[str, tuple[float, float]]] = {
+    "claude-opus-5": (5.00, 25.00),
+    "claude-sonnet-5": (2.00, 10.00),
+    "claude-sonnet-4-5-20250929": (3.00, 15.00),
+    "claude-haiku-4-5-20251001": (1.00, 5.00),
+}
+
+
+def model_pricing(model: str) -> tuple[float, float]:
+    """(input, output) USD per million tokens. Fails loudly on an unknown model.
+
+    Guessing a price is worse than not reporting one: a silently wrong rate produces a
+    confident, wrong cost figure, which is how the $3/$15 error survived a full day.
+    """
+    if model not in MODEL_PRICING:
+        raise KeyError(
+            f"no published price recorded for {model!r}. Add it to config.MODEL_PRICING "
+            "from https://platform.claude.com/docs/en/about-claude/pricing rather than "
+            "letting a run report a cost derived from a guess."
+        )
+    return MODEL_PRICING[model]
 
 
 # ---------------------------------------------------------------------------

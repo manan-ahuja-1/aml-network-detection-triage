@@ -979,3 +979,165 @@ remaining 128 alerts, the RAG ablation (`--no-rag`), and Day 7 all need it toppe
 
 **Next (Day 7):** the agentic context-pull step, which the v1/v2 result above now
 motivates directly, plus the SAR-structured narrative (§C2).
+
+---
+
+# Day 7 — The pivot: triage cases, not accounts
+
+## Why the unit changed
+
+Day 6 measured that per-account triage cannot work, and the agent explained why itself:
+
+> "that counterparty's transactions are not in evidence here, so the pattern that
+> alarmed the model cannot be verified from this account's side"
+
+Four of the five true positives it wrongly closed were **receiving spokes of a fan-out** —
+one inbound payment and nothing else. In isolation a spoke is indistinguishable from an
+ordinary receipt; the laundering lives in the *sender's* shape. Asked to judge a spoke
+alone the agent can only be reckless or useless, and prompt engineering cannot supply a
+fact that is not in the context.
+
+So alerts are now grouped into **cases** — connected clusters of alerted accounts — and
+the agent triages a case. This is not a cost compromise, it is the correct unit:
+`Patterns.txt` labels rings, investigators open cases on networks, and naming a topology
+from one spoke was never a fair task. That it also costs 4.4x fewer LLM calls is a
+convenience, not the argument.
+
+## How cases are formed
+
+Two alerted accounts join the same case if they transact directly, or if they share a
+non-alerted counterparty that is shared by at most 25 alerted accounts.
+
+That cap is load-bearing. Including counterparty-to-counterparty edges collapsed the
+validation queue into a **single component of 15,027 accounts** — one "case" containing
+everything, which is no grouping at all. With the cap:
+
+| | accounts | cases | max | median | productive |
+|---|---|---|---|---|---|
+| val | 200 | **45** | 62 | 2 | 53% |
+| test | 200 | **53** | 72 | 2 | 42% |
+
+The 53% / 42% balance matters as much as the count. The account queue was 68% productive
+and its top-25 slice 92%, with **two** false positives in it — which is why the Day 6
+v1/v2 calibration was unreadable. A near-balanced queue can actually be calibrated.
+
+## Results, and an operating-point frontier
+
+Four configurations, each a full 45-case validation run:
+
+| config | escalation precision vs control | FP removed | TP lost |
+|---|---|---|---|
+| A no counterparty context | **+13.3 pts** | 71% | 50.0% |
+| B every external counterparty listed | +3.2 pts | 52% | 45.8% |
+| C hub flag only (reach >= 10) | +10.3 pts | 62% | 41.7% |
+| D hub flag + small-case caution | +4.7 pts | 38% | **25.0%** |
+
+Control (escalate everything) is 53.3% precision, 100% recall, 21 wasted reviews.
+
+The first thing to say is that **all four beat the control**, which nothing at
+account level ever did — v2 scored +0.0 points, exactly the control. The pivot moved the
+agent from "identical to doing nothing" to a real trade.
+
+The second is that these are not four attempts at one answer; they are four points on the
+triage layer's own precision/recall frontier, and which one is correct depends on the same
+cost ratio the engine's threshold depends on. **D is the default here on domain grounds**:
+in AML a missed network costs more than a wasted review, so 25% TP loss at 38% FP removal
+beats 50% TP loss at 71%.
+
+The third is that **none of these is production-ready.** 25% true-positive loss would not
+pass a model validation review. The honest description is a working architecture with a
+measured operating-point frontier, not a shippable triage layer.
+
+## Where the remaining loss lives, and why
+
+Broken down by case size, config C:
+
+| case size | TP loss | FP removal |
+|---|---|---|
+| 1-2 accounts | 67% | 79% |
+| 3-5 accounts | 57% | 0% |
+| **6+ accounts** | **0%** | — |
+
+**Cases of six or more accounts were dispositioned correctly every time.** Every failure
+is in small cases, and the mechanism is structural rather than a reasoning failure: a case
+is built from accounts the model *alerted on*, so when only two members of a ring cleared
+the threshold, the case contains two accounts and one transfer and the ring is invisible.
+
+That points at the engine, not the agent. A deeper alert queue would produce more complete
+cases, at the cost of reviewing more of them — which is the Day 5 cost-ratio argument
+appearing one layer up.
+
+## The finding worth keeping: same data, different signal-to-noise
+
+Config B added every external counterparty's window activity, on the reasoning that more
+context is better. It made the agent **worse** — precision over control fell from +13.3
+to +3.2 points. A section present in every case, populated with unremarkable numbers,
+reads as background and nudged the agent toward escalating generally rather than
+discriminating.
+
+Filtered to a sparse flag (config C), the identical data separates cleanly:
+
+    external counterparty reach >= 10 fires on 42% of productive val cases
+    and 0% of non-productive ones
+
+Same information, opposite effect. The threshold is tuned on validation over 24
+productive and 21 non-productive cases, so the interval on that 0% is wide, and it is
+recorded in `config.CASE_HUB_REACH` rather than buried in a prompt.
+
+## Cost
+
+The pivot and the model change together took the cost of a full pass from **$6.92 to
+$0.33**:
+
+| | unit | calls | per unit | full pass |
+|---|---|---|---|---|
+| Day 6 per-account, Sonnet 5 | account | 200 | $0.0346 | $6.92 |
+| Day 7 per-case, Haiku 4.5 | case | 45 | **$0.0074** | **$0.33** |
+
+Case prompts are *smaller* than account prompts (~3,400 tokens against ~5,844) because
+the evidence cap applies once per case rather than once per account.
+
+Three things had to be fixed to get an honest number:
+
+- **The price constants were wrong.** `$3/$15` is Sonnet 4.5; the calls went to Sonnet 5
+  at `$2/$10`. Every cost reported on Day 6 was ~33% too high. Prices now live in a table
+  keyed by model id, and an unknown model raises rather than reporting a guess.
+- **82% of output tokens were reasoning, not text.** The emitted JSON is ~412 tokens
+  against 2,291 billed. `output_config.effort` defaults to `high` and was never set.
+- **Haiku 4.5 rejects `effort` outright** with a 400. The fallback is learned once per
+  run rather than retried on every call — without that a 45-case run made 90 requests,
+  half of them errors.
+
+## Zero hallucinated citations, still
+
+0 of 45 cases produced an invalid transaction citation, 0 cited a source that was not
+retrieved, and 0 cited nothing — holding across every configuration and both units.
+Citations are validated by set membership against exactly the rows rendered into the
+prompt, so an ID that exists but was not shown still counts as fabricated.
+
+## Budget
+
+A hard $10 ceiling is now enforced rather than remembered: every billed call is appended
+to `results/spend_ledger.json`, and a batch prices one real call and refuses to start if
+the projection would breach the remaining budget. Exceeding it requires typing
+`--confirm-spend <amount>`.
+
+This exists because a 200-alert run died at alert 72 with credits exhausted, after an
+earlier attempt had billed 51 completions that were then discarded when one bad alert
+killed the batch. Nothing had priced the work before starting it.
+
+Four full validation runs and a dev subset: **$1.34 of $10.00**.
+
+## Bugs fixed
+
+- **Direction was per-account in a per-case dossier.** `alert_evidence` writes IN/OUT
+  relative to whichever account it was called for, and a case pools rows across members,
+  so shared rows carried an arbitrary member's perspective. An account that only ever
+  received money was reported as having sent it. Direction is now derived from the
+  account being described, and case evidence is labelled IN / OUT / INTERNAL / SELF
+  relative to the case boundary.
+- `evidence_table` crashed when a case was built without model scores; it now ranks by
+  USD value and renders the score as absent rather than raising.
+
+**Next:** the SAR-structured narrative (§C2), then the Day 8 evaluation on the test case
+queue — scored once — with the RAG ablation.

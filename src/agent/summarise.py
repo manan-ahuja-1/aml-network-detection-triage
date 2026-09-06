@@ -102,20 +102,21 @@ def summarise(records: list[dict]) -> dict:
     }
 
 
-def render(summary: dict) -> str:
+def render(summary: dict, unit: str = "alert") -> str:
     t, b, a = (summary["triage_effect"], summary["baseline_escalate_everything"],
                summary["agent_as_classifier"])
     q, h, c = summary["queue_mix"], summary["hallucination"], summary["cost"]
+    plural = unit + "s"
 
     lines = [
         "=" * 70,
-        f"TRIAGE SUMMARY — {summary['n_alerts']} alerts",
+        f"TRIAGE SUMMARY — {summary['n_alerts']} {plural}",
         "=" * 70,
         f"  queue mix: {q['productive']} productive / {q['non_productive']} not "
         f"({q['productive_share'] * 100:.0f}% productive)",
         "",
         "  THE CONTROL — escalate everything",
-        f"    {b['escalated']} alerts reviewed, precision {b['precision'] * 100:.1f}%, "
+        f"    {b['escalated']} {plural} reviewed, precision {b['precision'] * 100:.1f}%, "
         f"recall 100%, {b['false_positives_reviewed']} wasted reviews",
         "",
         "  THE AGENT",
@@ -139,7 +140,7 @@ def render(summary: dict) -> str:
         "  GROUNDING (programmatic, A9)",
         f"    hallucinated citations: {h['n_with_invalid_citation']}/{summary['n_alerts']}"
         f"  ({h['rate'] * 100:.1f}%)",
-        f"    alerts citing nothing:  {h['n_citing_nothing']}",
+        f"    {plural} citing nothing:  {h['n_citing_nothing']}",
         f"    invalid source ids:     {h['invalid_source_citations']}",
         "",
         "  CLASSIFICATION",
@@ -149,9 +150,7 @@ def render(summary: dict) -> str:
     lines += [
         "",
         f"  COST — {c['model']}",
-        f"    ${c['per_alert_usd']:.4f} per alert, ${c['total_usd']:.4f} for this run",
-        f"    full {config.ALERT_SET_SIZE}-alert queue: "
-        f"${c['projected_full_queue_usd']:.2f}",
+        f"    ${c['per_alert_usd']:.5f} per {unit}, ${c['total_usd']:.4f} for this run",
         f"    median latency {c['median_latency_seconds']}s",
     ]
     return "\n".join(lines)
@@ -165,8 +164,9 @@ def main() -> int:
     args = parser.parse_args()
 
     records = json.loads(Path(args.path).read_text())
+    unit = "case" if records and records[0].get("case_id") else "alert"
     summary = summarise(records)
-    print(render(summary))
+    print(render(summary, unit))
 
     out = Path(args.path).with_name(Path(args.path).stem + "_summary.json")
     out.write_text(json.dumps(summary, indent=2))

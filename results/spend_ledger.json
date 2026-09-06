@@ -1,0 +1,52 @@
+[
+  {
+    "timestamp": "2026-09-06T11:11:53+00:00",
+    "script": "run_cases",
+    "model": "claude-haiku-4-5-20251001",
+    "billed_calls": 12,
+    "input_tokens": 62197,
+    "output_tokens": 5187,
+    "cost_usd": 0.088132,
+    "note": "val effort=low n=12"
+  },
+  {
+    "timestamp": "2026-09-06T11:16:47+00:00",
+    "script": "run_cases",
+    "model": "claude-haiku-4-5-20251001",
+    "billed_calls": 33,
+    "input_tokens": 167703,
+    "output_tokens": 13500,
+    "cost_usd": 0.235203,
+    "note": "val effort=low n=33"
+  },
+  {
+    "timestamp": "2026-09-06T11:22:27+00:00",
+    "script": "run_cases",
+    "model": "claude-haiku-4-5-20251001",
+    "billed_calls": 45,
+    "input_tokens": 247472,
+    "output_tokens": 19548,
+    "cost_usd": 0.345212,
+    "note": "val effort=low n=45"
+  },
+  {
+    "timestamp": "2026-09-06T11:27:19+00:00",
+    "script": "run_cases",
+    "model": "claude-haiku-4-5-20251001",
+    "billed_calls": 45,
+    "input_tokens": 237638,
+    "output_tokens": 18908,
+    "cost_usd": 0.332178,
+    "note": "val effort=low n=45"
+  },
+  {
+    "timestamp": "2026-09-06T11:31:24+00:00",
+    "script": "run_cases",
+    "model": "claude-haiku-4-5-20251001",
+    "billed_calls": 45,
+    "input_tokens": 247762,
+    "output_tokens": 18846,
+    "cost_usd": 0.341992,
+    "note": "val effort=low n=45"
+  }
+]
