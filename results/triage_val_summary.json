@@ -1,0 +1,53 @@
+{
+  "n_alerts": 72,
+  "queue_mix": {
+    "productive": 63,
+    "non_productive": 9,
+    "productive_share": 0.875
+  },
+  "triage_effect": {
+    "escalated": 72,
+    "closed": 0,
+    "false_positives_closed": 0,
+    "true_positives_closed": 0,
+    "fp_removal_rate": 0.0,
+    "tp_loss_rate": 0.0,
+    "review_volume_reduction": 0.0
+  },
+  "baseline_escalate_everything": {
+    "escalated": 72,
+    "precision": 0.875,
+    "recall": 1.0,
+    "false_positives_reviewed": 9
+  },
+  "agent_as_classifier": {
+    "precision": 0.875,
+    "recall": 1.0
+  },
+  "hallucination": {
+    "rate": 0.0,
+    "n_with_invalid_citation": 0,
+    "n_citing_nothing": 1,
+    "invalid_source_citations": 0
+  },
+  "classification": {
+    "NONE": 30,
+    "GATHER-SCATTER": 18,
+    "FAN-OUT": 9,
+    "FAN-IN": 9,
+    "STACK": 6
+  },
+  "confidence": {
+    "high": 13,
+    "low": 12,
+    "medium": 47
+  },
+  "cost": {
+    "model": "claude-sonnet-5",
+    "total_usd": 3.7371,
+    "per_alert_usd": 0.0519,
+    "projected_full_queue_usd": 10.38,
+    "median_latency_seconds": 26.9,
+    "billed_calls": 72
+  }
+}

@@ -117,9 +117,17 @@ def alert_evidence(frame: pd.DataFrame, node_id: str, split: str,
     handing the agent training-window activity would let it justify a test-split alert
     with evidence the engine never saw.
     """
+    import features_txn
+
     part = frame[frame["split"] == split]
     mask = (part["from_id"] == node_id) | (part["to_id"] == node_id)
     evidence = part[mask].copy()
+
+    # Amounts are converted to USD here, after filtering, for two reasons. An analyst
+    # comparing 500 Yen against 500 US Dollars as if they were the same number is the
+    # exact error currency normalisation exists to prevent, and the conversion is only
+    # cheap because it runs on this account's handful of rows rather than all 5M.
+    evidence = features_txn.add_usd_amounts(evidence)
     evidence.insert(0, "txn_id", transaction_ids(evidence))
     if scores is not None:
         evidence["model_score"] = scores.reindex(evidence.index).to_numpy()

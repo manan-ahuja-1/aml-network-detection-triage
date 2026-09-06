@@ -848,3 +848,134 @@ download entirely.
 
 **Next:** the triage agent core. It needs `ANTHROPIC_API_KEY` in `.env`, which is currently
 empty.
+
+---
+
+# Day 6 (part 2) — The triage agent
+
+## What was built
+
+`src/agent/` — a three-module L1 triage layer:
+
+- **`dossier.py`** assembles what the agent sees: alert header, account profile over the
+  scored window, capped evidence table, the engine's own SHAP attributions, and retrieved
+  regulatory passages. It also defines `citable_ids()`, which is the whitelist the
+  hallucination check runs against.
+- **`triage.py`** makes the call and validates the result. Structured outputs via
+  `output_config.format`, so the schema is enforced by the API rather than requested in
+  prose.
+- **`run_triage.py`** runs a queue, 8-way concurrent.
+- **`summarise.py`** reports the metrics, always against the escalate-everything control.
+
+## The API had moved on
+
+`messages.create` no longer accepts `temperature`. The original design said
+"temperature=0 for reproducibility"; that is not a claim this project can make any more,
+and the code and README say so rather than quietly dropping the parameter. What actually
+makes a re-run reproduce is the on-disk response cache, keyed by the exact prompt.
+
+`output_config.format` replaced the tool-use trick for structured output, which is a
+straight improvement: the schema is the contract rather than a tool the model chooses to
+call.
+
+## The headline: the agent oscillated between two useless calibrations
+
+**v1 — the original prompt.** On the top 25 alerts:
+
+| | |
+|---|---|
+| closed | 6 of 25 (24% of the queue) |
+| false positives closed | 1 of 2 |
+| **true positives closed** | **5 of 23 — 21.7% LOST** |
+
+Losing a fifth of real cases is not a triage layer a compliance function would accept.
+
+**v2 — recalibrated for error asymmetry.** The prompt was rewritten to state that the two
+errors are not symmetric, that closing requires a positive legitimate explanation rather
+than an absence of visible suspicion, and that inability to decide is the definition of an
+escalation. On 72 alerts:
+
+| | |
+|---|---|
+| closed | **0** |
+| true positives closed | 0 — 0.0% lost |
+| false positives closed | 0 of 9 |
+| escalation precision | 87.5% vs 87.5% control — **+0.0 points** |
+
+Zero true-positive loss, and zero value. This is exactly the escalate-everything baseline
+that §A8 exists to measure against.
+
+## Why prompt tuning cannot fix this
+
+The v1 rationales say plainly what the problem is. Four of the five true positives it
+closed were single-inbound-transaction accounts, and the agent's reasoning on them was:
+
+> "the model's top-weighted drivers (9 distinct currencies and 12 distinct banks in
+> outgoing activity) describe the counterparty/sender's broader profile, not anything
+> observable in this account's transaction history"
+
+> "that counterparty's transactions are not in evidence here, so the pattern that alarmed
+> the model cannot be verified from this account's side"
+
+Those accounts are **the receiving spokes of a fan-out**. A spoke receives one payment and
+does nothing else. From that account's own rows it is indistinguishable from an ordinary
+receipt — the laundering is visible only in the *sender's* shape, which the dossier does
+not contain.
+
+So the agent was not being careless in v1. It was reasoning correctly about a context that
+cannot answer the question, and when forced to decide anyway it can only be reckless (v1)
+or useless (v2). **The information is missing, not the judgement.**
+
+This is a better finding than a tuned number would have been, and it was only visible
+because the evaluation reports the control alongside the agent. "Triage accuracy 87.5%"
+would have looked respectable and meant nothing — it is exactly the control's score.
+
+**The fix is Day 7's agentic step** (pull a flagged counterparty's subgraph), which the
+plan scoped before this was measured and which now has a measurement motivating it.
+
+## What does work
+
+- **Zero hallucinated citations across every alert run** (0/25, 0/72). Citations are
+  validated by set membership against the IDs actually shown, and an ID that exists but
+  was not in the dossier still counts as fabricated, because the model could not have read
+  it. One alert cited nothing.
+- **Zero invalid source ids.** When the agent names FFIEC Appendix F, that passage was in
+  its context.
+- The SHAP cross-check works and is genuinely useful. The agent repeatedly noticed
+  mismatches between the model's stated drivers and the visible evidence — "the dominant
+  SHAP driver is 9 distinct currencies used by the sender, far more than the 3 currencies
+  visible in this window's evidence" — which is precisely the behaviour B3 was after.
+- Labelling self-transfers mattered. The rank-1 alert's rationale correctly described
+  "a same-account self-transfer that converts a Yuan balance into a different currency
+  before the funds leave", which would have read as five external fan-out spokes without
+  the label. 11.6% of this dataset is self-transfers.
+
+## Bugs found
+
+**The response cache ignored the system prompt.** The key hashed the model and the
+rendered user prompt only. Recalibrating the agent's closing criteria and re-running 25
+alerts returned all 25 from cache, 0 billed, byte-identical — indistinguishable from a
+prompt change that had no effect. Third time this project has been bitten by a cache key
+missing part of its own provenance (entity join, Day 2; graph features, Day 3). The key
+now covers the system prompt, the schema and `max_tokens`.
+
+**One failed alert destroyed a 200-alert run.** A single `max_tokens` overflow propagated
+out of `pool.map` and discarded 190 already-billed completions. Per-alert failures are now
+caught, recorded and reported; the batch continues.
+
+**Structured output truncation is silent.** Exceeding `max_tokens` mid-object returns an
+empty string, not an error. The diagnostic now reports `stop_reason` and the token count
+so the cause is named rather than guessed at. Raised 2000 -> 4000 -> 8000.
+
+## Cost and latency
+
+$0.052 per alert, median 26.9 s, 8-way concurrent. A full 200-alert queue is about
+**$10.40** and roughly 15 minutes.
+
+## Blocked
+
+The run stopped at 72 of 200 alerts: **the Anthropic account is out of credit.** The
+remaining 128 alerts, the RAG ablation (`--no-rag`), and Day 7 all need it topped up.
+
+**Next (Day 7):** the agentic context-pull step, which the v1/v2 result above now
+motivates directly, plus the SAR-structured narrative (§C2).

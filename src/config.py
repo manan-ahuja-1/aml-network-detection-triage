@@ -254,9 +254,20 @@ RAG_TOP_K: Final[int] = 5
 # ---------------------------------------------------------------------------
 # Triage agent (Day 6-8)
 # ---------------------------------------------------------------------------
-ANTHROPIC_MODEL: Final[str] = "claude-sonnet-4-5-20250929"
+ANTHROPIC_MODEL: Final[str] = "claude-sonnet-5"
+
+# DELIBERATELY UNUSED. `messages.create` no longer accepts `temperature` — sampling is
+# not a knob the current API exposes — so this project cannot and does not claim
+# temperature=0. Reproducibility of the agent's outputs comes from the on-disk response
+# cache in src/agent/triage.py, keyed by the exact prompt and model id. The constant is
+# kept only so an older import does not break.
 AGENT_TEMPERATURE: Final[float] = 0.0
-AGENT_MAX_TOKENS: Final[int] = 2000
+# Measured: a typical triage response is ~1,600 output tokens, and 2,000 was close
+# enough to the ceiling that longer cases were silently truncated mid-JSON — the
+# structured-output path returns an empty string in that case rather than an error.
+# Raised again to 8000 after one alert in the 200-run exhausted 4000 with zero text
+# emitted — evidence-heavy accounts produce long citation lists.
+AGENT_MAX_TOKENS: Final[int] = 8000
 
 # The eight typologies the simulator injects, plus an explicit "none". The agent
 # classifies into exactly this set so the result can be scored against Patterns.txt
