@@ -397,3 +397,60 @@ each document's opening, and retrieval would silently never match the remainder.
 errors. Chunking is measured against the real limit, which required disabling the
 tokenizer's own 128-token truncation first — with it left on, every long chunk reports
 exactly 128 tokens and an over-length chunk is invisible to the check meant to catch it.
+
+## 13. Why a control is not enough: disaggregating before believing a lift
+
+The agent's escalation precision was compared against escalate-everything from the start,
+because "84% accurate" on a 68%-productive queue means nothing. That control is necessary
+and it turned out not to be sufficient.
+
+One configuration beat the control by 6.7 points on validation. Broken out by case size,
+its escalation precision sat on the base rate inside *every* bucket — 38.5% against 38.7%
+among cases of one or two accounts, 83.3% against 85.7% among larger ones. The pooled lift
+was Simpson's paradox: small cases have a much lower base rate, the agent closed far more
+aggressively among them, and pooled precision rose without a single case being judged
+better than chance.
+
+The general principle, which applies to any triage or routing layer: **when a system
+chooses both how to judge and which subpopulation to act on, a pooled rate confounds the
+two.** A lift over a control is evidence only once it survives disaggregation by whatever
+the system is selecting on, plus a significance test on the 2×2 it is actually claiming.
+
+Both are now computed and reported unconditionally in `results/agent.json` —
+`discrimination.overall` and the per-size-bucket breakdown, with a one-sided Fisher exact
+p-value. On the test split the answer is p=0.51, and the project reports the disposition as
+measured-and-not-useful rather than burying it.
+
+## 14. What an ablation is allowed to claim at n=53
+
+The retrieval ablation moved two numbers. Typology any-match rose from 33.3% to 58.3% —
+which looks like the result, and rests on twelve labelled cases at p=0.21. Red-flag
+indicators named per case rose from 1.06 to 2.74, with the share of notes naming no
+indicator at all falling from 35 of 53 to 3 of 53, at p=4.3e-08.
+
+Reporting only the deltas would have put the emphasis on the one number that cannot hold
+it. So `ablation_significance` is computed alongside `ablation` and carries the reading
+with the number, rather than leaving the reader to discover which of the two is real.
+
+The typology figure is reported as a direction. The indicator figure is reported as the
+finding, and it is the honest claim for a RAG layer in this position: retrieval did not
+make the model a better ranker and was never going to, but it is what makes the output
+cite published regulatory text instead of asserting suspicion in its own voice.
+
+## 15. Scoring a classification task against a partially labelled ground truth
+
+`Patterns.txt` names the typology of every injected ring, which makes case-level typology
+a real labelled task rather than a rubric. But only 56.5% of surviving laundering
+transactions belong to a named ring. Ten of the 22 productive test cases contain laundering
+the simulator never grouped.
+
+Those cases have an *unknown* truth label, not NONE. Scoring them against NONE would
+manufacture credit whenever the agent said NONE and blame whenever it named a shape, out of
+a gap in the labelling rather than anything the agent did. They are excluded from the
+accuracy and counted separately, and the count travels with the metric everywhere it is
+printed.
+
+A case can also span several rings, so two readings are reported: any-match (the label is
+one of the types present) and dominant-match (the type with the most laundering
+transactions). Any-match is the operational reading — an investigator told "this is a
+fan-out" is pointed the right way even if the case also contains a stack.

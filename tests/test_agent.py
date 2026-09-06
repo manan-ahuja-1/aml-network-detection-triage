@@ -420,3 +420,120 @@ def test_pricing_is_known_for_the_configured_model():
     assert price_in > 0 and price_out > price_in
     with pytest.raises(KeyError, match="no published price"):
         config.model_pricing("claude-imaginary-9")
+
+
+# ---------------------------------------------------------------------------
+# The case note (§C2) — a narrative is a second surface for a fabricated id
+# ---------------------------------------------------------------------------
+def _note(intro="Intro.", body="Body.", conclusion="Pull the counterparty.") -> dict:
+    return {"introduction": intro, "body": body, "conclusion": conclusion}
+
+
+def test_schema_requires_the_three_sar_sections():
+    """FinCEN's template is enforced by the API, not requested in prose. If the sections
+    are merely suggested, a model under length pressure drops the conclusion — which is
+    the only section that tells the next reviewer what to do."""
+    note = triage.TRIAGE_SCHEMA["properties"]["case_note"]
+    assert note["required"] == ["introduction", "body", "conclusion"]
+    assert note["additionalProperties"] is False
+    assert "case_note" in triage.TRIAGE_SCHEMA["required"]
+
+
+def test_validate_catches_a_transaction_id_invented_in_the_narrative():
+    """The citation list is a clean set operation because the API types it. Prose is not,
+    and an id invented in the body of a case note misleads an investigator just as much."""
+    dossier = _dossier_with(["T0000001"])
+    result = {"cited_transaction_ids": ["T0000001"], "sources_cited": [],
+              "pattern_classification": "FAN-OUT", "disposition": "escalate",
+              "risk_rationale": "Funds moved out.",
+              "case_note": _note(body="T0000001 and T0000002 left the same day.")}
+    v = triage.validate(result, dossier)
+    assert v["hallucinated_citation"] is False          # the list itself is clean
+    assert v["invalid_narrative_txn_ids"] == ["T0000002"]
+    assert v["hallucinated_anywhere"] is True
+
+
+def test_validate_catches_an_account_the_dossier_never_showed():
+    dossier = _dossier_with(["T0000001"])
+    dossier["members"] = [{"account": "1267:8030004E0"}]
+    dossier["evidence"][0]["counterparty"] = "213:80C93DF00"
+    result = {"cited_transaction_ids": [], "sources_cited": [],
+              "pattern_classification": "NONE", "disposition": "close",
+              "risk_rationale": "",
+              "case_note": _note(body="1267:8030004E0 paid 999:80DEADBEE via ACH.")}
+    v = triage.validate(result, dossier)
+    assert v["invalid_narrative_accounts"] == ["999:80DEADBEE"]
+    assert v["hallucinated_anywhere"] is True
+
+
+def test_a_narrative_citing_only_shown_ids_is_clean():
+    dossier = _dossier_with(["T0000001", "T0000002"])
+    dossier["members"] = [{"account": "1267:8030004E0"}]
+    dossier["evidence"][0]["counterparty"] = "213:80C93DF00"
+    result = {"cited_transaction_ids": ["T0000001"], "sources_cited": [],
+              "pattern_classification": "FAN-IN", "disposition": "escalate",
+              "risk_rationale": "1267:8030004E0 collected funds.",
+              "case_note": _note(body="T0000001 and T0000002 came from 213:80C93DF00.")}
+    v = triage.validate(result, dossier)
+    assert v["hallucinated_anywhere"] is False
+    assert v["note_txn_ids_referenced"] == 2
+    assert v["note_sections_missing"] == []
+
+
+def test_validate_flags_a_missing_narrative_section():
+    dossier = _dossier_with(["T0000001"])
+    result = {"cited_transaction_ids": [], "sources_cited": [],
+              "pattern_classification": "NONE", "disposition": "close",
+              "case_note": _note(conclusion="   ")}
+    assert triage.validate(result, dossier)["note_sections_missing"] == ["conclusion"]
+
+
+def test_validation_still_loads_a_record_written_before_the_narrative_existed():
+    """Day 6's per-account results are the evidence that motivated the pivot; a schema
+    change must not make them unreadable."""
+    dossier = _dossier_with(["T0000001"])
+    result = {"cited_transaction_ids": ["T0000001"], "sources_cited": [],
+              "pattern_classification": "NONE", "disposition": "close"}
+    v = triage.validate(result, dossier)
+    assert v["note_sections_missing"] == list(triage.NOTE_SECTIONS)
+    assert v["hallucinated_anywhere"] is False
+
+
+@needs_data
+def test_citable_accounts_excludes_members_the_dossier_withheld(val_cases, frame):
+    """A 62-account case renders only MEMBER_LIMIT of its members. An account that was
+    withheld is as uncitable as one that does not exist — otherwise the check quietly
+    grants the agent credit for naming something it could not have read."""
+    cases, table = val_cases
+    big = max(cases, key=lambda c: c.n_members)
+    d = dossier_mod.build_case(frame, big, table, {}, retrieve=False)
+    if not d["members_omitted"]:
+        pytest.skip("no case large enough to omit members")
+    shown = dossier_mod.citable_accounts(d)
+    rendered = triage.render_case(d)
+    assert all(a in rendered for a in shown)
+    assert any(m not in shown for m in big.members)
+
+
+def test_case_prompt_forbids_pointing_at_the_evidence_instead_of_stating_it():
+    """FinCEN is explicit that 'see attached' defeats the purpose, because only the
+    narrative text is captured. The same failure at L1 produces a note that says nothing."""
+    assert "see attached" in triage.CASE_SYSTEM_PROMPT.lower()
+    assert "introduction" in triage.CASE_SYSTEM_PROMPT.lower()
+    for prompt in (triage.SYSTEM_PROMPT, triage.CASE_SYSTEM_PROMPT):
+        assert "conclusion" in prompt.lower()
+
+
+def test_the_decision_is_generated_after_the_reasoning():
+    """Structured output is emitted in schema-property order — verified against a
+    returned record. Declaring `disposition` first made "escalate" the model's first
+    output token, produced before any analysis existed, so every other field was written
+    to justify a call already made. The order below is load-bearing, not cosmetic."""
+    order = list(triage.TRIAGE_SCHEMA["properties"])
+    # evidence is committed before the prose that describes it — moving the note ahead
+    # of the citation list put two accounts in a narrative that were never in a dossier
+    assert order.index("cited_transaction_ids") < order.index("case_note")
+    # and the prose is complete before the call it supports
+    assert order.index("case_note") < order.index("disposition")
+    assert order.index("pattern_classification") < order.index("disposition")
+    assert order[-1] == "confidence"

@@ -1,0 +1,407 @@
+{
+  "split": "test",
+  "model": "claude-haiku-4-5-20251001",
+  "effort": "low",
+  "test_retrieval_on": {
+    "n_alerts": 53,
+    "queue_mix": {
+      "productive": 22,
+      "non_productive": 31,
+      "productive_share": 0.4151
+    },
+    "triage_effect": {
+      "escalated": 47,
+      "closed": 6,
+      "false_positives_closed": 4,
+      "true_positives_closed": 2,
+      "fp_removal_rate": 0.129,
+      "tp_loss_rate": 0.0909,
+      "review_volume_reduction": 0.1132
+    },
+    "baseline_escalate_everything": {
+      "escalated": 53,
+      "precision": 0.4151,
+      "recall": 1.0,
+      "false_positives_reviewed": 31
+    },
+    "agent_as_classifier": {
+      "precision": 0.4255,
+      "recall": 0.9091
+    },
+    "hallucination": {
+      "rate": 0.0,
+      "n_with_invalid_citation": 0,
+      "n_citing_nothing": 1,
+      "invalid_source_citations": 0
+    },
+    "case_note": {
+      "n_with_note": 53,
+      "n_incomplete": 0,
+      "median_words": 501,
+      "median_txn_ids_referenced": 8,
+      "n_with_fabricated_id_in_prose": 1,
+      "fabricated_prose_rate": 0.0189,
+      "examples": [
+        "148016:811C597B0"
+      ]
+    },
+    "classification": {
+      "GATHER-SCATTER": 22,
+      "FAN-IN": 19,
+      "NONE": 11,
+      "FAN-OUT": 1
+    },
+    "confidence": {
+      "medium": 19,
+      "high": 30,
+      "low": 4
+    },
+    "cost": {
+      "model": "claude-haiku-4-5-20251001",
+      "total_usd": 0.6519,
+      "per_alert_usd": 0.0123,
+      "projected_full_queue_usd": 2.46,
+      "median_latency_seconds": 27.9,
+      "billed_calls": 53
+    },
+    "typology": {
+      "n_labelled_cases": 12,
+      "n_clean_cases": 31,
+      "n_unlabelled_laundering_cases": 10,
+      "coverage_note": "typology accuracy is computed on the 12 cases whose members touch a named ring in the scored window; 10 productive cases have laundering the simulator did not group into a ring and are excluded rather than scored against NONE",
+      "any_match_accuracy": 0.5833,
+      "dominant_match_accuracy": 0.5,
+      "said_none_on_a_labelled_case": 2,
+      "clean_cases_called_none": 8,
+      "by_true_type": {
+        "FAN-IN": {
+          "n": 1,
+          "any": 0,
+          "dominant": 0,
+          "any_accuracy": 0.0,
+          "dominant_accuracy": 0.0
+        },
+        "FAN-OUT": {
+          "n": 1,
+          "any": 1,
+          "dominant": 0,
+          "any_accuracy": 1.0,
+          "dominant_accuracy": 0.0
+        },
+        "GATHER-SCATTER": {
+          "n": 8,
+          "any": 6,
+          "dominant": 6,
+          "any_accuracy": 0.75,
+          "dominant_accuracy": 0.75
+        },
+        "SCATTER-GATHER": {
+          "n": 2,
+          "any": 0,
+          "dominant": 0,
+          "any_accuracy": 0.0,
+          "dominant_accuracy": 0.0
+        }
+      },
+      "confusion": {
+        "GATHER-SCATTER -> GATHER-SCATTER": 6,
+        "GATHER-SCATTER -> NONE": 2,
+        "SCATTER-GATHER -> GATHER-SCATTER": 1,
+        "FAN-OUT -> GATHER-SCATTER": 1,
+        "SCATTER-GATHER -> FAN-IN": 1,
+        "FAN-IN -> FAN-OUT": 1
+      }
+    },
+    "by_case_size": {
+      "1-2": {
+        "n_cases": 43,
+        "n_productive": 13,
+        "tp_lost": 2,
+        "tp_loss_rate": 0.1538,
+        "fp_removed": 4,
+        "fp_removal_rate": 0.1333
+      },
+      "3-5": {
+        "n_cases": 8,
+        "n_productive": 7,
+        "tp_lost": 0,
+        "tp_loss_rate": 0.0,
+        "fp_removed": 0,
+        "fp_removal_rate": 0.0
+      },
+      "6+": {
+        "n_cases": 2,
+        "n_productive": 2,
+        "tp_lost": 0,
+        "tp_loss_rate": 0.0,
+        "fp_removed": 0,
+        "fp_removal_rate": null
+      }
+    },
+    "discrimination": {
+      "overall": {
+        "n": 53,
+        "escalated": 47,
+        "escalation_precision": 0.4255,
+        "queue_base_rate": 0.4151,
+        "lift_pts": 1.0,
+        "odds_ratio": 1.481,
+        "fisher_p_one_sided": 0.5115
+      },
+      "1-2": {
+        "n": 43,
+        "escalated": 37,
+        "escalation_precision": 0.2973,
+        "queue_base_rate": 0.3023,
+        "lift_pts": -0.5,
+        "odds_ratio": 0.846,
+        "fisher_p_one_sided": 0.7519
+      },
+      "reading": "the escalated set is not significantly enriched in productive cases (p = 0.5115); the disposition is reported as measured-not-useful rather than as a headline"
+    },
+    "red_flags": {
+      "mean_per_case": 2.736,
+      "cases_naming_none": 3,
+      "distinct_indicators": 115,
+      "most_named": {
+        "ffiec-appendix-f: Funds transfer activity is unexplained, repetitive, or shows unusual patterns": 8,
+        "fincen-fin-2014-a005": 4,
+        "ffiec-appendix-f": 4,
+        "ffiec-appendix-f: Many small, incoming transfers of funds are received": 3,
+        "ffiec-appendix-f: Almost immediately, all or most of the transfers or deposits are wired to another city or country in a manner inconsistent with the customer's business or history": 3,
+        "funds_transfer_activity_unexplained_repetitive_unusual_patterns": 3,
+        "ffiec-appendix-f: Many small, incoming transfers of funds are received, or deposits are made using checks and money orders": 3,
+        "ffiec-appendix-f: Funds transfer activity is unexplained, repetitive, or shows unusual patterns.": 3
+      },
+      "sources_relied_on": {
+        "ffiec-appendix-f": 50,
+        "ibm-amlsim-typologies": 49,
+        "fincen-fin-2014-a005": 15
+      }
+    },
+    "source_file": "triage_cases_test.json"
+  },
+  "test_retrieval_off": {
+    "n_alerts": 53,
+    "queue_mix": {
+      "productive": 22,
+      "non_productive": 31,
+      "productive_share": 0.4151
+    },
+    "triage_effect": {
+      "escalated": 34,
+      "closed": 19,
+      "false_positives_closed": 14,
+      "true_positives_closed": 5,
+      "fp_removal_rate": 0.4516,
+      "tp_loss_rate": 0.2273,
+      "review_volume_reduction": 0.3585
+    },
+    "baseline_escalate_everything": {
+      "escalated": 53,
+      "precision": 0.4151,
+      "recall": 1.0,
+      "false_positives_reviewed": 31
+    },
+    "agent_as_classifier": {
+      "precision": 0.5,
+      "recall": 0.7727
+    },
+    "hallucination": {
+      "rate": 0.0189,
+      "n_with_invalid_citation": 1,
+      "n_citing_nothing": 2,
+      "invalid_source_citations": 11
+    },
+    "case_note": {
+      "n_with_note": 53,
+      "n_incomplete": 0,
+      "median_words": 507,
+      "median_txn_ids_referenced": 8,
+      "n_with_fabricated_id_in_prose": 0,
+      "fabricated_prose_rate": 0.0,
+      "examples": []
+    },
+    "classification": {
+      "NONE": 21,
+      "FAN-IN": 10,
+      "GATHER-SCATTER": 9,
+      "SCATTER-GATHER": 7,
+      "FAN-OUT": 4,
+      "BIPARTITE": 1,
+      "STACK": 1
+    },
+    "confidence": {
+      "medium": 35,
+      "high": 14,
+      "low": 4
+    },
+    "cost": {
+      "model": "claude-haiku-4-5-20251001",
+      "total_usd": 0.5604,
+      "per_alert_usd": 0.01057,
+      "projected_full_queue_usd": 2.11,
+      "median_latency_seconds": 26.8,
+      "billed_calls": 53
+    },
+    "typology": {
+      "n_labelled_cases": 12,
+      "n_clean_cases": 31,
+      "n_unlabelled_laundering_cases": 10,
+      "coverage_note": "typology accuracy is computed on the 12 cases whose members touch a named ring in the scored window; 10 productive cases have laundering the simulator did not group into a ring and are excluded rather than scored against NONE",
+      "any_match_accuracy": 0.3333,
+      "dominant_match_accuracy": 0.1667,
+      "said_none_on_a_labelled_case": 5,
+      "clean_cases_called_none": 15,
+      "by_true_type": {
+        "FAN-IN": {
+          "n": 1,
+          "any": 0,
+          "dominant": 0,
+          "any_accuracy": 0.0,
+          "dominant_accuracy": 0.0
+        },
+        "FAN-OUT": {
+          "n": 1,
+          "any": 1,
+          "dominant": 0,
+          "any_accuracy": 1.0,
+          "dominant_accuracy": 0.0
+        },
+        "GATHER-SCATTER": {
+          "n": 8,
+          "any": 3,
+          "dominant": 2,
+          "any_accuracy": 0.375,
+          "dominant_accuracy": 0.25
+        },
+        "SCATTER-GATHER": {
+          "n": 2,
+          "any": 0,
+          "dominant": 0,
+          "any_accuracy": 0.0,
+          "dominant_accuracy": 0.0
+        }
+      },
+      "confusion": {
+        "GATHER-SCATTER -> NONE": 3,
+        "GATHER-SCATTER -> GATHER-SCATTER": 2,
+        "GATHER-SCATTER -> SCATTER-GATHER": 2,
+        "SCATTER-GATHER -> NONE": 2,
+        "GATHER-SCATTER -> BIPARTITE": 1,
+        "FAN-OUT -> GATHER-SCATTER": 1,
+        "FAN-IN -> FAN-OUT": 1
+      }
+    },
+    "by_case_size": {
+      "1-2": {
+        "n_cases": 43,
+        "n_productive": 13,
+        "tp_lost": 3,
+        "tp_loss_rate": 0.2308,
+        "fp_removed": 14,
+        "fp_removal_rate": 0.4667
+      },
+      "3-5": {
+        "n_cases": 8,
+        "n_productive": 7,
+        "tp_lost": 2,
+        "tp_loss_rate": 0.2857,
+        "fp_removed": 0,
+        "fp_removal_rate": 0.0
+      },
+      "6+": {
+        "n_cases": 2,
+        "n_productive": 2,
+        "tp_lost": 0,
+        "tp_loss_rate": 0.0,
+        "fp_removed": 0,
+        "fp_removal_rate": null
+      }
+    },
+    "discrimination": {
+      "overall": {
+        "n": 53,
+        "escalated": 34,
+        "escalation_precision": 0.5,
+        "queue_base_rate": 0.4151,
+        "lift_pts": 8.5,
+        "odds_ratio": 2.8,
+        "fisher_p_one_sided": 0.0816
+      },
+      "1-2": {
+        "n": 43,
+        "escalated": 26,
+        "escalation_precision": 0.3846,
+        "queue_base_rate": 0.3023,
+        "lift_pts": 8.2,
+        "odds_ratio": 2.917,
+        "fisher_p_one_sided": 0.1323
+      },
+      "3-5": {
+        "n": 8,
+        "escalated": 6,
+        "escalation_precision": 0.8333,
+        "queue_base_rate": 0.875,
+        "lift_pts": -4.2,
+        "odds_ratio": 0.0,
+        "fisher_p_one_sided": 1.0
+      },
+      "reading": "the escalated set is not significantly enriched in productive cases (p = 0.0816); the disposition is reported as measured-not-useful rather than as a headline"
+    },
+    "red_flags": {
+      "mean_per_case": 1.057,
+      "cases_naming_none": 35,
+      "distinct_indicators": 56,
+      "most_named": {
+        "Structuring activity or use of multiple deposit/withdrawal methods": 1,
+        "High-volume movement through the account": 1,
+        "Use of intermediaries or shell accounts": 1,
+        "Use of multiple channels to transfer funds": 1,
+        "rapid-movement-of-funds": 1,
+        "layering": 1,
+        "high-volume-transfers-unusual-pattern": 1,
+        "FFIEC_2002_Duplicate_transactions_over_short_period": 1
+      },
+      "sources_relied_on": {
+        "FFIEC_2002": 1,
+        "FFIEC_AML_manual_section_840_3": 1,
+        "FFIEC_AML_Exam_Manual_Transaction_Monitoring": 1,
+        "FinCEN_Money_Laundering_Indicators": 1,
+        "FinCEN_Advisory_Layering_Patterns": 1,
+        "FFIEC_AML_exam_manual_circular_patterns": 1,
+        "FinCEN_advisory_rapid_transfers": 1,
+        "FFIEC_examination_manual_AML_indicators": 1,
+        "FFIEC_EXAM_MANUAL_2020": 1,
+        "EGMONT-EGMONT-06": 1,
+        "EGMONT-EGMONT-09": 1
+      }
+    },
+    "source_file": "triage_cases_test_norag.json"
+  },
+  "ablation": {
+    "escalation_precision": -0.0745,
+    "recall": 0.1364,
+    "fp_removal_rate": -0.3226,
+    "tp_loss_rate": -0.1364,
+    "typology_any_match": 0.25,
+    "cost_per_case_usd": 0.0017,
+    "red_flags_named": 1.679
+  },
+  "ablation_significance": {
+    "typology_any_match": {
+      "on": "7/12",
+      "off": "4/12",
+      "fisher_p_one_sided": 0.2068,
+      "reading": "suggestive but NOT significant at this sample size \u2014 reported as a direction, not a result"
+    },
+    "red_flag_indicators_per_case": {
+      "on": 2.736,
+      "off": 1.057,
+      "cases_naming_none_on": 3,
+      "cases_naming_none_off": 35,
+      "mann_whitney_p_one_sided": 4.29e-08,
+      "reading": "the ablation's real result: retrieval is what makes the note cite published indicators rather than assert suspicion"
+    }
+  }
+}

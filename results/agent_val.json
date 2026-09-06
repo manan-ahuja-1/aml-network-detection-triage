@@ -1,0 +1,191 @@
+{
+  "split": "val",
+  "model": "claude-haiku-4-5-20251001",
+  "effort": "low",
+  "test_retrieval_on": {
+    "n_alerts": 44,
+    "queue_mix": {
+      "productive": 24,
+      "non_productive": 20,
+      "productive_share": 0.5455
+    },
+    "triage_effect": {
+      "escalated": 33,
+      "closed": 11,
+      "false_positives_closed": 4,
+      "true_positives_closed": 7,
+      "fp_removal_rate": 0.2,
+      "tp_loss_rate": 0.2917,
+      "review_volume_reduction": 0.25
+    },
+    "baseline_escalate_everything": {
+      "escalated": 44,
+      "precision": 0.5455,
+      "recall": 1.0,
+      "false_positives_reviewed": 20
+    },
+    "agent_as_classifier": {
+      "precision": 0.5152,
+      "recall": 0.7083
+    },
+    "hallucination": {
+      "rate": 0.0,
+      "n_with_invalid_citation": 0,
+      "n_citing_nothing": 0,
+      "invalid_source_citations": 0
+    },
+    "case_note": {
+      "n_with_note": 44,
+      "n_incomplete": 0,
+      "median_words": 506,
+      "median_txn_ids_referenced": 8,
+      "n_with_fabricated_id_in_prose": 0,
+      "fabricated_prose_rate": 0.0,
+      "examples": []
+    },
+    "classification": {
+      "NONE": 17,
+      "FAN-IN": 12,
+      "GATHER-SCATTER": 9,
+      "SCATTER-GATHER": 5,
+      "FAN-OUT": 1
+    },
+    "confidence": {
+      "high": 19,
+      "medium": 23,
+      "low": 2
+    },
+    "cost": {
+      "model": "claude-haiku-4-5-20251001",
+      "total_usd": 0.56,
+      "per_alert_usd": 0.01273,
+      "projected_full_queue_usd": 2.55,
+      "median_latency_seconds": 28.1,
+      "billed_calls": 44
+    },
+    "typology": {
+      "n_labelled_cases": 24,
+      "n_clean_cases": 20,
+      "n_unlabelled_laundering_cases": 0,
+      "coverage_note": "typology accuracy is computed on the 24 cases whose members touch a named ring in the scored window; 0 productive cases have laundering the simulator did not group into a ring and are excluded rather than scored against NONE",
+      "any_match_accuracy": 0.375,
+      "dominant_match_accuracy": 0.375,
+      "said_none_on_a_labelled_case": 10,
+      "clean_cases_called_none": 7,
+      "by_true_type": {
+        "CYCLE": {
+          "n": 2,
+          "any": 0,
+          "dominant": 0,
+          "any_accuracy": 0.0,
+          "dominant_accuracy": 0.0
+        },
+        "FAN-IN": {
+          "n": 2,
+          "any": 1,
+          "dominant": 1,
+          "any_accuracy": 0.5,
+          "dominant_accuracy": 0.5
+        },
+        "FAN-OUT": {
+          "n": 6,
+          "any": 0,
+          "dominant": 0,
+          "any_accuracy": 0.0,
+          "dominant_accuracy": 0.0
+        },
+        "GATHER-SCATTER": {
+          "n": 7,
+          "any": 5,
+          "dominant": 5,
+          "any_accuracy": 0.7143,
+          "dominant_accuracy": 0.7143
+        },
+        "RANDOM": {
+          "n": 1,
+          "any": 0,
+          "dominant": 0,
+          "any_accuracy": 0.0,
+          "dominant_accuracy": 0.0
+        },
+        "SCATTER-GATHER": {
+          "n": 5,
+          "any": 3,
+          "dominant": 3,
+          "any_accuracy": 0.6,
+          "dominant_accuracy": 0.6
+        },
+        "STACK": {
+          "n": 1,
+          "any": 0,
+          "dominant": 0,
+          "any_accuracy": 0.0,
+          "dominant_accuracy": 0.0
+        }
+      },
+      "confusion": {
+        "FAN-OUT -> NONE": 5,
+        "GATHER-SCATTER -> GATHER-SCATTER": 5,
+        "SCATTER-GATHER -> SCATTER-GATHER": 3,
+        "SCATTER-GATHER -> NONE": 1,
+        "GATHER-SCATTER -> FAN-OUT": 1,
+        "GATHER-SCATTER -> NONE": 1,
+        "CYCLE -> FAN-IN": 1,
+        "FAN-IN -> FAN-IN": 1,
+        "STACK -> NONE": 1,
+        "SCATTER-GATHER -> GATHER-SCATTER": 1,
+        "CYCLE -> NONE": 1,
+        "RANDOM -> SCATTER-GATHER": 1,
+        "FAN-OUT -> GATHER-SCATTER": 1,
+        "FAN-IN -> NONE": 1
+      }
+    },
+    "by_case_size": {
+      "1-2": {
+        "n_cases": 30,
+        "n_productive": 12,
+        "tp_lost": 5,
+        "tp_loss_rate": 0.4167,
+        "fp_removed": 4,
+        "fp_removal_rate": 0.2222
+      },
+      "3-5": {
+        "n_cases": 9,
+        "n_productive": 7,
+        "tp_lost": 2,
+        "tp_loss_rate": 0.2857,
+        "fp_removed": 0,
+        "fp_removal_rate": 0.0
+      },
+      "6+": {
+        "n_cases": 5,
+        "n_productive": 5,
+        "tp_lost": 0,
+        "tp_loss_rate": 0.0,
+        "fp_removed": 0,
+        "fp_removal_rate": null
+      }
+    },
+    "red_flags": {
+      "mean_per_case": 2.659,
+      "cases_naming_none": 4,
+      "distinct_indicators": 100,
+      "most_named": {
+        "ffiec-appendix-f: Funds transfer activity is unexplained, repetitive, or shows unusual patterns": 5,
+        "Funds transfer activity is unexplained, repetitive, or shows unusual patterns": 3,
+        "Many small, incoming transfers of funds are received, or deposits are made using checks and money orders": 3,
+        "Many small, incoming transfers of funds are received, or deposits are made using checks and money orders.": 2,
+        "Funds transfer activity is unexplained, repetitive, or shows unusual patterns.": 2,
+        "ffiec-appendix-f: Many small, incoming transfers of funds are received, or deposits are made using checks and money orders.": 2,
+        "ffiec-appendix-f: Funds transfer activity is unexplained, repetitive, or shows unusual patterns.": 2,
+        "Almost immediately, all or most of the transfers or deposits are wired to another city or country in a manner inconsistent with the customer's business or history": 2
+      },
+      "sources_relied_on": {
+        "ffiec-appendix-f": 40,
+        "ibm-amlsim-typologies": 37,
+        "fincen-fin-2014-a005": 15
+      }
+    },
+    "source_file": "triage_cases_val.json"
+  }
+}

@@ -144,6 +144,7 @@ def main() -> int:
                     "is_productive": int(case.is_productive)}
         record["is_productive"] = int(case.is_productive)
         record["n_members"] = case.n_members
+        record["members"] = case.members
         with lock:
             done[0] += 1
             r, v = record["result"], record["validation"]
@@ -154,12 +155,13 @@ def main() -> int:
                   f"{r['disposition']:<9} {r['pattern_classification']:<15} "
                   f"{r['confidence']:<7} cites={v['n_cited']:<3} "
                   f"{'OK ' if agree else 'MISS'}"
-                  f"{' HALLUCINATED' if v['hallucinated_citation'] else ''}"
+                  f"{' HALLUCINATED' if v['hallucinated_anywhere'] else ''}"
                   f"{'  (cached)' if record['cached'] else ''}")
         return record
 
     records[0]["is_productive"] = int(queue[0].is_productive)
     records[0]["n_members"] = queue[0].n_members
+    records[0]["members"] = queue[0].members
     started = time.monotonic()
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         records += list(pool.map(run_one, zip(queue[1:], dossiers[1:])))

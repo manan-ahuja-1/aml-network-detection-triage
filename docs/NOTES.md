@@ -1139,5 +1139,196 @@ Four full validation runs and a dev subset: **$1.34 of $10.00**.
 - `evidence_table` crashed when a case was built without model scores; it now ranks by
   USD value and renders the score as absent rather than raising.
 
-**Next:** the SAR-structured narrative (§C2), then the Day 8 evaluation on the test case
-queue — scored once — with the RAG ablation.
+---
+
+# Day 8 — The SAR narrative, and the measurement that decided what this layer is for
+
+## What was built
+
+- `case_note` added to the output schema as a structured object — `introduction`,
+  `body`, `conclusion` — following the FinCEN SAR Narrative Guidance Package (Nov 2003),
+  which is already in the knowledge base as `fincen-sar-narrative-2003`. The template is
+  enforced by the API rather than requested in prose, so a model under length pressure
+  cannot quietly drop the conclusion, which is the only section that tells the next
+  reviewer what to do.
+- The hallucination check extended to the narrative. `cited_transaction_ids` was a clean
+  set operation because the API types it; prose is not, and an invented id in the body of
+  a case note misleads an investigator exactly as much. Transaction ids and account ids
+  are now scanned out of every free-text field and checked against `citable_accounts()` —
+  which is *what the dossier rendered*, not what the case contains, because a 62-account
+  case shows only twelve of its members.
+- `src/agent/evaluate_agent.py` — the Day 8 scorer. Writes `results/agent.json`.
+- Test case queue scored once, both configurations declared before either ran.
+
+## The headline: the disposition carries no signal, and the number that said otherwise was an artifact
+
+The Day 7 frontier reported escalation precision above the escalate-everything control.
+That number does not survive being asked whether it means anything.
+
+Fisher's exact test on the 2×2 of disposition against ground truth, one-sided, asking
+whether the escalated set is enriched in productive cases relative to the queue it was
+drawn from:
+
+| split | escalation precision | queue base rate | p |
+|---|---|---|---|
+| **test, n=53** | 42.5% | 41.5% | **0.51** |
+| test, cases of 1-2 accounts (n=43) | 29.7% | 30.2% | 0.75 |
+| val, n=45, best of three orderings | 60.0% | 53.3% | **0.24** |
+| val, same run, cases of 1-2 (n=31) | 38.5% | 38.7% | — |
+| val, same run, cases of 3+ (n=14) | 83.3% | 85.7% | — |
+
+Read the last two rows together. That configuration scored **+6.7 points over the
+control**, and inside *every* size bucket its escalation precision sits on the base rate
+to within a point and a half. The lift is Simpson's paradox and nothing else: small cases
+have a lower base rate (38.7%) than large ones (85.7%), the agent closed far more
+aggressively among the small ones, and pooled precision rose without a single case being
+judged better than chance.
+
+**Pooled precision above a control is not evidence of skill when the agent also chooses
+which subpopulation to act on.** This is the single most useful thing measured in the
+project, and it was found only because the size breakdown from Day 7 was already there to
+disaggregate against.
+
+The test split confirms it out of sample: +1.0 points, p=0.51.
+
+## Why it was never going to work, stated properly
+
+The engine is a gradient-boosted model over ~100 features including multi-hop graph
+topology. The agent receives a rendered text summary of a subset of that. Asking it to
+re-rank the engine's own output is asking a model with strictly less information to
+improve on one with more, using the same evidence. There is no prompt for that.
+
+Day 7 diagnosed the missing fact as the fan-out shape and fixed it by changing the unit
+to the case. That was correct and it did help — 6+ account cases now lose zero true
+positives on both splits — but it fixed the *shape* problem, not the *information*
+problem. The remaining ranking signal that would separate a productive small case from an
+unproductive one is in the engine's features, not in the dossier.
+
+## Field order in a structured output is not cosmetic
+
+Three orderings of the same schema, same prompt, same 45 validation cases:
+
+| declaration order | escalation precision | TP lost | fabricated ids in prose |
+|---|---|---|---|
+| 1. decision first, note last | +6.7 pts | 37.5% | 0 |
+| 2. note first, decision last | −0.2 pts | 29.2% | **2 (4.4%)** |
+| 3. evidence → note → decision | −3.0 pts | 29.2% | 0 |
+
+Structured output is generated in schema-property order — verified by reading the key
+order off a returned record. So with `disposition` declared first, **"escalate" was the
+model's first output token**, produced before a word of analysis existed, and every field
+after it was written to justify a call already made.
+
+Moving the note to the front fixed the reasoning order and broke the grounding: with no
+citation list committed before the prose, two accounts appeared in narratives that were
+never in a dossier. A committed citation list is what bounds what the prose can say.
+
+Ordering 3 keeps both properties — pull the evidence, write from it, then decide — and it
+is what ships. Note that it is the *worst* of the three on disposition precision and that
+is not a reason to reject it: given p=0.24, the ranking of those three numbers is noise,
+and choosing on noise is how a project talks itself into a result. It was chosen on
+grounding, which is the property that measures.
+
+## What the layer is actually for
+
+Strip out the disposition and what remains is measured, real, and worth having:
+
+**A grounded case note.** 53 test cases, median 501 words, median 8 transaction ids
+written into prose — roughly 26,500 words of generated narrative, of which **one**
+fabricated identifier (an account, 1.9% of cases). Zero fabricated transaction ids in the
+structured citation list, on either split. All three sections present in 53 of 53.
+
+**Typology naming against ground truth.** Scored against `Patterns.txt` at ring level:
+58.3% any-match, 50.0% dominant-match — on the 12 test cases whose members touch a named
+ring. Ten productive test cases have laundering the simulator never grouped into a ring;
+their truth is *unknown*, not NONE, and scoring them against NONE would manufacture
+credit or blame out of a labelling gap, so they are excluded and counted.
+
+**A retrieval layer that demonstrably changes the note.** See below.
+
+## The RAG ablation, and which half of it survives a test
+
+Both test configurations were fixed before either ran.
+
+| | retrieval on | off | |
+|---|---|---|---|
+| escalation precision | 42.5% | 50.0% | both ≈ base rate, p=0.51 / p=0.08 |
+| typology any-match | 58.3% (7/12) | 33.3% (4/12) | Fisher p=**0.21** — not significant |
+| red-flag indicators per case | **2.74** | 1.06 | Mann-Whitney p=**4.3e-08** |
+| notes naming no indicator at all | 3 of 53 | **35 of 53** | |
+| notes citing a source | 50 of 53 | 7 of 53 | |
+| cost per case | $0.0123 | $0.0106 | |
+
+The typology delta is the one that looks like the headline and it is the one that cannot
+carry it — twelve labelled cases, p=0.21. Reported as a direction.
+
+The indicator result is overwhelming and is the actual finding: **retrieval is what makes
+the note cite published regulatory indicators instead of asserting suspicion in its own
+voice.** Two thirds of no-retrieval notes name no indicator at all; with retrieval that
+falls to 6%, and the sources actually leaned on are FFIEC Appendix F (50 cases), the
+AMLSIM typology reference (49) and FinCEN FIN-2014-A005 on funnel accounts (15).
+
+That is the correct claim for a RAG layer in this position. It was never going to make
+the model a better ranker; it makes the output defensible to an examiner.
+
+## Where the errors still are — the Day 7 finding replicates
+
+| case size | test: TP lost | val: TP lost |
+|---|---|---|
+| 1-2 accounts | 2/13 (15%) | 5/12 (42%) |
+| 3-5 accounts | 0/7 (0%) | 2/7 (29%) |
+| 6+ accounts | **0/2 (0%)** | **0/5 (0%)** |
+
+Zero true-positive loss in large cases, on both splits, in every configuration tried. The
+structural reading holds: a case is assembled from accounts the model alerted on, so when
+only two members of a ring cross the threshold, the ring arrives invisible rather than
+absent. It is an alert-depth property, not an agent property.
+
+The typology confusion matrix says the same thing from the other side. On validation the
+dominant error was **FAN-OUT → NONE, 5 of 6** — a fan-out reaches the agent as one or two
+alerted spokes, the hub is not itself alerted so it is not a case member, and "no shape"
+is the correct description of what was handed over. GATHER-SCATTER (57%) and
+SCATTER-GATHER (60%) score far better because they arrive as multi-account cases where
+the shape is visible.
+
+## Cost
+
+$0.0123 per case with retrieval, $0.0106 without. The test evaluation — 53 cases scored
+twice — cost $1.21 in total. Day 8 spend $2.40 including three validation runs; **$4.29
+of the $10 ceiling used, $5.71 remaining.**
+
+## Bugs fixed
+
+- `citable_accounts()` raised on evidence rows without a `counterparty` key. Now reads
+  every field defensively, because the same function serves case and account dossiers.
+- A bank-qualified account id contains its own suffix, so a single fabricated
+  `999:80DEADBEE` was counted twice — once by the qualified pattern and once by the bare
+  one — silently inflating the fabrication rate. The bare scan now runs on prose with the
+  qualified matches removed.
+- One validation case died on a 500 from the API and was excluded; re-running filled it
+  from cache for one billed call.
+- `evaluate_agent.py --split val` wrote `results/agent.json`, the reported test artifact.
+  It now writes `agent_val.json` for anything that is not the test split.
+
+## The one fabrication, looked at
+
+Worth reading rather than reporting as a rate. In `CASE-TEST-002` — eleven members — the
+note names `148016:811C597B0`. That account does not exist in the dossier, but both of its
+halves do: `119:811C597B0` is a member, and `148016:811FCA7B0` is a *different* member.
+The model spliced one member's bank prefix onto another's account number.
+
+That is a compositional error, not an invention from nothing, and it has a cheap
+mitigation available if it recurs: the bank prefix carries no information the note needs,
+so members could be rendered with a case-local index and the full id kept in a lookup.
+Left as measured for now — one occurrence in 53 cases is not enough to design against, and
+the check that would catch a recurrence is running.
+
+Separately, `CASE-TEST-053` returned an **empty** `cited_transaction_ids` while writing two
+valid transaction ids into its prose. Under the shipped ordering the citation list is
+emitted first, so the model committed to citing nothing and then cited anyway. The prose
+ids were both real, and they were real because the check validates against the *dossier*
+rather than against the model's own list — which is the reason to define the citable set
+from what was rendered rather than from what the model claims to have used.
+
+**Next:** §C domain layer and the Streamlit demo (Day 9), which reads cached results and
+costs nothing per view; then the README generated from `results/*.json`.

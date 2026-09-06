@@ -43,6 +43,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -115,12 +116,94 @@ TRIAGE_SCHEMA = {
             "items": {"type": "string"},
             "description": "source ids from REFERENCE MATERIAL actually relied on.",
         },
+        "case_note": {
+            "type": "object",
+            "description": (
+                "The handover document, structured to FinCEN's SAR narrative "
+                "template (introduction / body / conclusion). This is written for "
+                "the next person to open the file, not for the model's own "
+                "reasoning."),
+            "properties": {
+                "introduction": {
+                    "type": "string",
+                    "description": (
+                        "Two to three sentences. What this case is, what activity "
+                        "is alleged or suspected in plain terms, and the red flags "
+                        "that brought it here. Name the topology if there is one. "
+                        "If the disposition is close, say so here and name the "
+                        "legitimate explanation."),
+                },
+                "body": {
+                    "type": "string",
+                    "description": (
+                        "The supporting facts, in chronological order where "
+                        "possible: which accounts moved money, to and from whom, "
+                        "how much, when, in what currencies and payment formats, "
+                        "and how the accounts relate to each other. Reference "
+                        "specific transaction IDs from the EVIDENCE section. State "
+                        "the origination and application of funds where visible. "
+                        "Four to eight sentences."),
+                },
+                "conclusion": {
+                    "type": "string",
+                    "description": (
+                        "What the next reviewer should do: which specific accounts "
+                        "or counterparties to pull, what records would resolve the "
+                        "open question, and what this triage layer could not see. "
+                        "For a closed case, state what was reviewed and what would "
+                        "change the decision. Must agree with the disposition. Two "
+                        "to four sentences."),
+                },
+            },
+            "required": ["introduction", "body", "conclusion"],
+            "additionalProperties": False,
+        },
     },
     "required": ["disposition", "pattern_classification", "confidence",
              "risk_rationale", "cited_transaction_ids", "red_flag_indicators",
-             "sources_cited"],
+             "sources_cited", "case_note"],
 "additionalProperties": False,
 }
+
+# FIELD ORDER IS NOT COSMETIC — IT WAS MEASURED
+# ---------------------------------------------
+# Structured output is generated in schema-property order; verified against a returned
+# record, whose keys came back in exactly the declared order. So the schema decides what
+# the model has already written when it writes each subsequent field, and three orderings
+# on the same 45 validation cases produced three different agents:
+#
+#   declaration order          escalation precision   TP lost   fabricated ids in prose
+#   decision first, note last        +6.7 pts          37.5%              0
+#   note first, decision last        -0.2 pts          29.2%              2  (4.4%)
+#   evidence -> note -> decision       (below)
+#
+# Each of the first two fixes what the other breaks, and both mechanisms are the same
+# one. Declaring `disposition` first made "escalate" or "close" the model's FIRST OUTPUT
+# TOKEN, produced before a word of analysis existed — so everything after it was written
+# to justify a call already made, and precision rose only because the model closed
+# boldly. Moving the note to the front fixed that and cost the other property: with the
+# citation list no longer committed before the prose, the narrative named two accounts
+# that were never in the dossier. A committed citation list is what grounds the prose.
+#
+# The order below keeps both. Select the evidence, write the facts from that evidence,
+# and only then decide — which is also the order a human analyst works in. The stored
+# order is the source of truth for what the model sees; the `required` list above is
+# order-independent and left as written.
+_ANALYST_ORDER = [
+    "cited_transaction_ids",   # 1. pull the rows you are relying on, and commit to them
+    "case_note",               # 2. write the facts up — bounded by what you just cited
+    "red_flag_indicators",     # 3. which published indicators actually apply
+    "sources_cited",
+    "pattern_classification",  # 4. the shape those facts form
+    "risk_rationale",          # 5. the argument, compactly
+    "disposition",             # 6. and only now, the call
+    "confidence",
+]
+assert set(_ANALYST_ORDER) == set(TRIAGE_SCHEMA["properties"]), (
+    "every field must be placed explicitly; an unplaced one would silently move to the "
+    "end and change what the model conditions on")
+TRIAGE_SCHEMA["properties"] = {k: TRIAGE_SCHEMA["properties"][k]
+                               for k in _ANALYST_ORDER}
 
 SYSTEM_PROMPT = """You are an L1 triage analyst in a bank's financial crime team.
 
@@ -174,11 +257,21 @@ THIS model fired, not to re-derive suspicion independently. But they are attribu
 not evidence. A high weight tells you what moved the score; the transactions tell you
 what happened. If the two disagree, say so — that is a useful signal about the alert.
 
+THE CASE NOTE
+Separately from the disposition you write a handover note, structured the way FinCEN
+structures a SAR narrative — introduction (what this is and what is suspected), body
+(the facts: who moved money to whom, how much, when, in what format), conclusion (what
+the next reviewer should pull and what you could not see). You are not filing anything;
+the structure is used because it forces the five W's and because the facts are then
+already organised if this ever does become a filing. A closed alert gets a note too —
+closures are what an examiner samples in a lookback.
+
 CITATION RULE — STRICT
 You may cite ONLY transaction IDs that appear in the EVIDENCE section, copied verbatim.
-If a section says further transactions exist but are not shown, you may refer to them in
-aggregate but you may NOT cite them, because you have not seen them. An ID you did not
-read in the EVIDENCE section is a fabrication even if such a transaction exists.
+This applies to the case note as much as to the citation list. If a section says further
+transactions exist but are not shown, you may refer to them in aggregate but you may NOT
+cite them, because you have not seen them. An ID you did not read in the EVIDENCE
+section is a fabrication even if such a transaction exists.
 
 ON THE REFERENCE MATERIAL
 Passages are retrieved from published regulatory sources (FFIEC examination manual,
@@ -276,11 +369,56 @@ actually drove their scores. Use them: your job is to explain why THIS model fir
 they are attributions, not evidence. If they disagree with what the transactions show,
 say so; that disagreement is itself informative.
 
+THE ORDER YOU WORK IN
+The output is structured to force one order and you cannot depart from it: first select
+the transactions you are relying on, then write the case note from those transactions,
+then name the shape, and only then record the disposition. Two consequences you should
+lean into. Your note may only describe what you have already cited, so cite the rows you
+intend to write about. And your decision comes last because it is meant to follow from
+what you found — do not settle on escalate or close and then assemble a case for it.
+
+WRITE THE CASE NOTE TO THE SAR NARRATIVE TEMPLATE
+Separately from the disposition, you produce a case note. It is the handover document —
+the thing the next person reads before they open a single transaction — and it is
+structured the way FinCEN structures a SAR narrative: introduction, body, conclusion.
+
+Two reasons for using that structure at L1, neither of which is that you are filing
+anything. First, if this case does eventually become a SAR, the facts are already
+organised the way the filing needs them and nobody re-does the work. Second, the
+template forces the five W's — who, what, when, where, why — plus how, and an L1 note
+that skips any of them is the note that gets sent back.
+
+  INTRODUCTION — what this case is and what is suspected, in plain terms, plus the red
+  flags that brought it here. Name the topology if the group forms one.
+
+  BODY — the facts. Which accounts moved money, to and from whom, how much, when, in
+  what currency and payment format, and how the accounts relate to each other. Work
+  chronologically where you can. Identify both the origination and the application of
+  funds where the evidence shows them. This is where transaction IDs belong.
+
+  CONCLUSION — what the next reviewer should do. Name the specific accounts or
+  counterparties to pull, say what records would resolve the open question, and state
+  what you could not see. This is the most useful line in the note; do not waste it
+  restating the introduction.
+
+Write it as prose an investigator can read, not as a list of field values. Never write
+"see the evidence above" or "see attached" — a note that points elsewhere instead of
+saying the thing is a note that failed. Do not state or imply that a SAR will be filed.
+
+A CLOSED CASE STILL GETS A NOTE
+Closures are what an examiner samples in a lookback: the question asked is not "why did
+you escalate this" but "why did you close that". A closure note that says only "no
+suspicious activity identified" cannot survive that question. State what you reviewed,
+what the legitimate explanation is, and what would have changed your mind.
+
 CITATION RULE — STRICT
 You may cite ONLY transaction IDs that appear in the EVIDENCE section, copied verbatim.
-Where a section says further transactions exist but are not shown, refer to them in
-aggregate but do NOT cite them. An ID you did not read in the EVIDENCE section is a
-fabrication even if such a transaction exists.
+This applies to the case note as much as to the citation list: an ID written into the
+narrative is a citation, and the same rule governs it. Where a section says further
+transactions exist but are not shown, refer to them in aggregate but do NOT cite them.
+An ID you did not read in the EVIDENCE section is a fabrication even if such a
+transaction exists. The same goes for account numbers: name only accounts that appear
+in this dossier.
 
 ON THE REFERENCE MATERIAL
 Passages are retrieved from published regulatory sources (FFIEC examination manual,
@@ -450,12 +588,41 @@ def triage_case(dossier: dict, client=None, use_cache: bool = True,
                  system_prompt=CASE_SYSTEM_PROMPT)
 
 
+# Any identifier the agent can write into prose has to be checkable, or adding a
+# narrative silently narrows the grounding claim from "the agent does not fabricate" to
+# "the agent does not fabricate in the one field we look at". Transaction ids are
+# T0001234; account ids are bank:account, e.g. 1267:8030004E0.
+_TXN_RE = re.compile(r"\bT\d{7}\b")
+_ACCT_RE = re.compile(r"\b\d{1,6}:[0-9A-Fa-f]{6,12}\b")
+# Accounts are also written bare, without the bank prefix — every suffix in this dataset
+# is exactly nine hex characters. Requiring one A-F among them keeps a nine-digit number
+# in prose from being read as an account; the cost is missing an all-numeric suffix,
+# which is the safe direction for a check that must not cry wolf.
+_BARE_ACCT_RE = re.compile(r"\b(?=[0-9A-F]{9}\b)(?=[0-9]*[A-F])[0-9A-F]{9}\b")
+
+NOTE_SECTIONS = ("introduction", "body", "conclusion")
+
+
+def narrative_text(result: dict) -> str:
+    """Every free-text field the agent wrote, concatenated for scanning."""
+    note = result.get("case_note") or {}
+    return "\n".join([result.get("risk_rationale", "")]
+                     + [note.get(k, "") for k in NOTE_SECTIONS])
+
+
 def validate(result: dict, dossier: dict) -> dict:
     """Programmatic checks on the agent's output (A9).
 
     Hallucination is measured, not asserted: a citation either is or is not in the set
     of IDs the agent was shown. Returning the invalid ones rather than a boolean means
     Day 8 can report a rate AND show what was fabricated.
+
+    The narrative is scanned on the same terms. `cited_transaction_ids` is a clean set
+    operation precisely because the API enforces its type, but the moment the agent also
+    writes prose, prose becomes a place to put an id — and an id invented in the body of
+    a case note misleads an investigator exactly as much as one in the citation list.
+    Account numbers are checked the same way and against what the dossier actually
+    RENDERED, since a large case withholds most of its members.
     """
     citable = dossier_mod.citable_ids(dossier)
     cited = list(result.get("cited_transaction_ids", []))
@@ -463,6 +630,21 @@ def validate(result: dict, dossier: dict) -> dict:
 
     known_sources = {h["source"] for h in dossier["knowledge_base"]}
     bad_sources = [s for s in result.get("sources_cited", []) if s not in known_sources]
+
+    prose = narrative_text(result)
+    shown_accounts = dossier_mod.citable_accounts(dossier)
+    prose_txn_bad = sorted({m for m in _TXN_RE.findall(prose) if m not in citable})
+    # A bank-qualified id contains its own suffix, so the bare scan runs on the prose
+    # with the qualified ones removed — otherwise one fabricated account is reported
+    # twice and the rate is silently inflated.
+    shown_suffixes = {a.split(":")[-1] for a in shown_accounts}
+    bare_prose = _ACCT_RE.sub(" ", prose)
+    prose_acct_bad = sorted(
+        {m for m in _ACCT_RE.findall(prose) if m not in shown_accounts}
+        | {m for m in _BARE_ACCT_RE.findall(bare_prose) if m not in shown_suffixes})
+
+    note = result.get("case_note") or {}
+    missing_sections = [k for k in NOTE_SECTIONS if not (note.get(k) or "").strip()]
 
     return {
         "n_cited": len(cited),
@@ -472,6 +654,13 @@ def validate(result: dict, dossier: dict) -> dict:
         "invalid_sources": bad_sources,
         "typology_valid": result.get("pattern_classification") in config.TYPOLOGIES,
         "disposition_valid": result.get("disposition") in {"escalate", "close"},
+        # The narrative, held to the same standard as the structured citation list.
+        "note_sections_missing": missing_sections,
+        "note_words": len(prose.split()),
+        "note_txn_ids_referenced": len(set(_TXN_RE.findall(prose))),
+        "invalid_narrative_txn_ids": prose_txn_bad,
+        "invalid_narrative_accounts": prose_acct_bad,
+        "hallucinated_anywhere": bool(invalid or prose_txn_bad or prose_acct_bad),
     }
 
 

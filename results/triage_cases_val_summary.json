@@ -6,13 +6,13 @@
     "productive_share": 0.5333
   },
   "triage_effect": {
-    "escalated": 31,
-    "closed": 14,
-    "false_positives_closed": 8,
-    "true_positives_closed": 6,
-    "fp_removal_rate": 0.381,
-    "tp_loss_rate": 0.25,
-    "review_volume_reduction": 0.3111
+    "escalated": 25,
+    "closed": 20,
+    "false_positives_closed": 11,
+    "true_positives_closed": 9,
+    "fp_removal_rate": 0.5238,
+    "tp_loss_rate": 0.375,
+    "review_volume_reduction": 0.4444
   },
   "baseline_escalate_everything": {
     "escalated": 45,
@@ -21,32 +21,42 @@
     "false_positives_reviewed": 21
   },
   "agent_as_classifier": {
-    "precision": 0.5806,
-    "recall": 0.75
+    "precision": 0.6,
+    "recall": 0.625
   },
   "hallucination": {
-    "rate": 0.0222,
-    "n_with_invalid_citation": 1,
+    "rate": 0.0,
+    "n_with_invalid_citation": 0,
     "n_citing_nothing": 0,
     "invalid_source_citations": 0
   },
+  "case_note": {
+    "n_with_note": 45,
+    "n_incomplete": 0,
+    "median_words": 476,
+    "median_txn_ids_referenced": 9,
+    "n_with_fabricated_id_in_prose": 0,
+    "fabricated_prose_rate": 0.0,
+    "examples": []
+  },
   "classification": {
     "NONE": 20,
-    "GATHER-SCATTER": 12,
     "FAN-IN": 10,
-    "SCATTER-GATHER": 3
+    "GATHER-SCATTER": 8,
+    "SCATTER-GATHER": 5,
+    "FAN-OUT": 2
   },
   "confidence": {
     "high": 34,
-    "medium": 9,
-    "low": 2
+    "medium": 10,
+    "low": 1
   },
   "cost": {
     "model": "claude-haiku-4-5-20251001",
-    "total_usd": 0.342,
-    "per_alert_usd": 0.0076,
-    "projected_full_queue_usd": 1.52,
-    "median_latency_seconds": 11.8,
-    "billed_calls": 45
+    "total_usd": 0.5465,
+    "per_alert_usd": 0.01214,
+    "projected_full_queue_usd": 2.43,
+    "median_latency_seconds": 26.7,
+    "billed_calls": 41
   }
 }

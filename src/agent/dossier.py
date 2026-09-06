@@ -360,6 +360,29 @@ def citable_ids(dossier: dict) -> set[str]:
     return {row["txn_id"] for row in dossier["evidence"]}
 
 
+def citable_accounts(dossier: dict) -> set[str]:
+    """Every account identifier the rendered dossier actually puts in front of the model.
+
+    Deliberately not "every account in the case". A case of 62 accounts renders only
+    MEMBER_LIMIT of them, and the citation rule is about what was READ, not what exists:
+    an account the dossier withheld is as fabricated in a narrative as one that does not
+    exist at all. Keeping this aligned with what `render_case` prints is the whole point,
+    so anything added to that renderer has to be added here too.
+    """
+    shown: set[str] = set()
+    for key, field in (("members", "account"), ("evidence", "counterparty"),
+                       ("counterparty_context", "account"),
+                       ("model_reasons_by_member", "account")):
+        for row in dossier.get(key) or []:
+            shown.add(row.get(field))
+    for key in ("biggest_fan_out", "biggest_fan_in"):
+        for row in (dossier.get("topology") or {}).get(key, []) or []:
+            shown.add(row["account"])
+    if dossier.get("alert"):                       # the per-account path
+        shown.add(dossier["alert"].get("account"))
+    return {a for a in shown if a}
+
+
 def load_shap(split: str) -> dict:
     path = config.RESULTS / f"shap_{split}.json"
     return json.loads(path.read_text()) if path.exists() else {}

@@ -48,5 +48,75 @@
     "output_tokens": 18846,
     "cost_usd": 0.341992,
     "note": "val effort=low n=45"
+  },
+  {
+    "timestamp": "2026-09-06T12:38:18+00:00",
+    "script": "run_cases",
+    "model": "claude-haiku-4-5-20251001",
+    "billed_calls": 4,
+    "input_tokens": 24261,
+    "output_tokens": 4862,
+    "cost_usd": 0.048571,
+    "note": "val effort=low n=4"
+  },
+  {
+    "timestamp": "2026-09-06T12:43:29+00:00",
+    "script": "run_cases",
+    "model": "claude-haiku-4-5-20251001",
+    "billed_calls": 41,
+    "input_tokens": 264814,
+    "output_tokens": 46623,
+    "cost_usd": 0.497929,
+    "note": "val effort=low n=41"
+  },
+  {
+    "timestamp": "2026-09-06T12:51:44+00:00",
+    "script": "run_cases",
+    "model": "claude-haiku-4-5-20251001",
+    "billed_calls": 45,
+    "input_tokens": 292902,
+    "output_tokens": 56200,
+    "cost_usd": 0.573902,
+    "note": "val effort=low n=45"
+  },
+  {
+    "timestamp": "2026-09-06T12:58:31+00:00",
+    "script": "run_cases",
+    "model": "claude-haiku-4-5-20251001",
+    "billed_calls": 44,
+    "input_tokens": 289514,
+    "output_tokens": 54104,
+    "cost_usd": 0.560034,
+    "note": "val effort=low n=44"
+  },
+  {
+    "timestamp": "2026-09-06T13:02:47+00:00",
+    "script": "run_cases",
+    "model": "claude-haiku-4-5-20251001",
+    "billed_calls": 4,
+    "input_tokens": 31800,
+    "output_tokens": 5177,
+    "cost_usd": 0.057685,
+    "note": "val effort=low n=4"
+  },
+  {
+    "timestamp": "2026-09-06T13:08:26+00:00",
+    "script": "run_cases",
+    "model": "claude-haiku-4-5-20251001",
+    "billed_calls": 53,
+    "input_tokens": 343685,
+    "output_tokens": 61648,
+    "cost_usd": 0.651925,
+    "note": "test effort=low n=53"
+  },
+  {
+    "timestamp": "2026-09-06T13:13:42+00:00",
+    "script": "run_cases",
+    "model": "claude-haiku-4-5-20251001",
+    "billed_calls": 53,
+    "input_tokens": 271770,
+    "output_tokens": 57716,
+    "cost_usd": 0.56035,
+    "note": "test no-rag effort=low n=53"
   }
 ]

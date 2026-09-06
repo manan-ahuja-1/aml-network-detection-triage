@@ -45,6 +45,15 @@ def summarise(records: list[dict]) -> dict:
     hallucinated = [r for r in records if r["validation"]["hallucinated_citation"]]
     cited_nothing = [r for r in records if r["validation"]["cited_nothing"]]
 
+    # The case note is a second place the agent can write an identifier, so it gets its
+    # own numbers rather than being folded into the citation-list rate. `.get` because
+    # the Day 6 per-account records predate the narrative and must still load.
+    v = [r["validation"] for r in records]
+    narrative_bad = [x for x in v if x.get("invalid_narrative_txn_ids")
+                     or x.get("invalid_narrative_accounts")]
+    with_note = [x for x in v if "note_words" in x]
+    incomplete = [x for x in with_note if x.get("note_sections_missing")]
+
     return {
         "n_alerts": n,
         "queue_mix": {
@@ -85,6 +94,22 @@ def summarise(records: list[dict]) -> dict:
             "n_citing_nothing": len(cited_nothing),
             "invalid_source_citations": sum(
                 len(r["validation"]["invalid_sources"]) for r in records),
+        },
+        "case_note": {
+            "n_with_note": len(with_note),
+            "n_incomplete": len(incomplete),
+            "median_words": (sorted(x["note_words"] for x in with_note)[
+                len(with_note) // 2] if with_note else None),
+            "median_txn_ids_referenced": (sorted(
+                x["note_txn_ids_referenced"] for x in with_note)[len(with_note) // 2]
+                if with_note else None),
+            "n_with_fabricated_id_in_prose": len(narrative_bad),
+            "fabricated_prose_rate": (round(len(narrative_bad) / len(with_note), 4)
+                                      if with_note else None),
+            "examples": sorted(
+                {i for x in narrative_bad
+                 for i in (x.get("invalid_narrative_txn_ids", [])
+                           + x.get("invalid_narrative_accounts", []))})[:10],
         },
         "classification": dict(Counter(
             r["result"]["pattern_classification"] for r in records).most_common()),
@@ -142,6 +167,21 @@ def render(summary: dict, unit: str = "alert") -> str:
         f"  ({h['rate'] * 100:.1f}%)",
         f"    {plural} citing nothing:  {h['n_citing_nothing']}",
         f"    invalid source ids:     {h['invalid_source_citations']}",
+    ]
+    cn = summary.get("case_note", {})
+    if cn.get("n_with_note"):
+        lines += [
+            "",
+            "  CASE NOTE (SAR structure: introduction / body / conclusion)",
+            f"    written: {cn['n_with_note']}/{summary['n_alerts']}, "
+            f"{cn['n_incomplete']} missing a section",
+            f"    median {cn['median_words']} words, "
+            f"{cn['median_txn_ids_referenced']} transaction ids referenced in prose",
+            f"    fabricated ids in prose: {cn['n_with_fabricated_id_in_prose']}"
+            f"  ({(cn['fabricated_prose_rate'] or 0) * 100:.1f}%)"
+            + (f"  e.g. {', '.join(cn['examples'][:4])}" if cn["examples"] else ""),
+        ]
+    lines += [
         "",
         "  CLASSIFICATION",
     ]
