@@ -9,6 +9,7 @@ published results mean.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -225,3 +226,141 @@ def test_all_eight_typologies_are_covered_by_the_corpus():
         tagged.update(t for t in meta["typologies"].split("|") if t)
     expected = set(config.TYPOLOGIES) - {"NONE"}
     assert expected <= tagged, f"no corpus material for: {sorted(expected - tagged)}"
+
+
+# ---------------------------------------------------------------------------
+# The graph cache key (Day 9) — a cache that omits an input answers the wrong question
+# ---------------------------------------------------------------------------
+import features_graph as fg  # noqa: E402
+
+
+def test_graph_cache_key_covers_the_currency_table():
+    """Graph edges are weighted by USD volume and PageRank follows those weights, so the
+    FX table is an input to every graph feature. Before this, the key was `train_end` and
+    `seed` only — rebuilding under corrected rates would have returned the old
+    money-weighted graph and the FX experiment would have measured nothing."""
+    before = fg.fx_digest()
+    original = dict(config.FX_TO_USD)
+    try:
+        config.FX_TO_USD = {**original, "Euro": original["Euro"] * 1.05}
+        assert fg.fx_digest() != before
+    finally:
+        config.FX_TO_USD = original
+    assert fg.fx_digest() == before
+
+
+def test_graph_cache_key_covers_the_training_rows():
+    """The single-bank experiment builds arm C from one institution's visible subset —
+    same train_end, same seed, same FX, different rows. Without the training frame in the
+    key it would have been served the full inter-bank graph from cache and concluded that
+    partial visibility costs nothing."""
+    a = pd.DataFrame(index=pd.RangeIndex(1000))
+    b = pd.DataFrame(index=pd.RangeIndex(500))
+    assert fg.train_digest(a) != fg.train_digest(b)
+    assert fg.train_digest(a) == fg.train_digest(pd.DataFrame(index=pd.RangeIndex(1000)))
+
+
+def test_graph_cache_paths_are_distinct_per_input():
+    a = pd.DataFrame(index=pd.RangeIndex(1000))
+    b = pd.DataFrame(index=pd.RangeIndex(999))
+    assert fg._cache_paths(a)[0] != fg._cache_paths(b)[0]
+    assert fg._cache_paths(a)[1] != fg._cache_paths(b)[1]
+
+
+# ---------------------------------------------------------------------------
+# FX provenance
+# ---------------------------------------------------------------------------
+def test_every_currency_has_a_sourced_rate():
+    """The sourced table must cover exactly the currencies the operating table does, or
+    the comparison silently skips one."""
+    assert set(config.FX_TO_USD) == set(config.FX_TO_USD_SOURCED)
+    assert all(v > 0 for v in config.FX_TO_USD_SOURCED.values())
+    assert config.FX_TO_USD_SOURCED["US Dollar"] == 1.0
+
+
+def test_fx_sources_are_registered_with_a_date():
+    """Same discipline as kb/sources.json: a number without a retrievable source is the
+    thing this project keeps refusing to ship."""
+    assert config.FX_SOURCE_DATE == "2022-09-01"
+    for key in ("ecb", "cbr", "sama_peg", "bitcoin"):
+        assert config.FX_SOURCES[key].startswith("https://")
+
+
+def test_partial_graph_uses_only_the_requested_fraction_of_training_edges():
+    """The visibility experiment degrades ONLY the graph. Account and typology features
+    stay on the full training window, because an institution does hold its own customers'
+    histories — degrading everything would confound network visibility with simply having
+    less data."""
+    import inspect
+
+    import single_bank
+    src = inspect.getsource(single_bank.build_arm_with_partial_graph)
+    # the graph frame is sampled; the account/typology tables are not
+    assert "train.sample(frac=fraction" in src
+    assert "features_account.build_account_table(train)" in src
+    assert "features_typology.build_typology_table(train)" in src
+
+
+def test_visibility_curve_spans_floor_to_ceiling():
+    import single_bank
+    assert single_bank.FRACTIONS[0] == 1.00, "the ceiling must be measured, not assumed"
+    assert min(single_bank.FRACTIONS) < 0.25
+    assert sorted(single_bank.FRACTIONS, reverse=True) == list(single_bank.FRACTIONS)
+
+
+def test_the_abandoned_single_bank_attempt_is_recorded():
+    """Bank 070 turned out to be a clearing entity — 15 accounts, 452,751 transactions,
+    no internal transfers — so the per-institution experiment was abandoned. The evidence
+    for that decision travels in the results rather than living only in a commit message."""
+    import single_bank
+    d = single_bank.DATASET_STRUCTURE
+    assert d["n_banks"] > 30_000
+    assert d["median_accounts_per_bank"] <= 5
+    assert d["bank_070"]["internal_transfer_share"] == 0.0
+    assert d["bank_070"]["transactions_per_account"] > 10_000
+    assert "clearing" in d["bank_070"]["verdict"]
+
+
+# ---------------------------------------------------------------------------
+# README provenance (Day 10) — no number in the README is typed by hand
+# ---------------------------------------------------------------------------
+readme_built = pytest.mark.skipif(
+    not (config.RESULTS / "readme_provenance.json").exists(),
+    reason="README not generated yet; run `make readme`")
+
+
+@readme_built
+def test_every_readme_number_still_resolves_to_a_results_path():
+    """The generator records the dotted path behind each value it renders. If a results
+    file is regenerated with a different shape, this fails instead of the README quietly
+    keeping a number whose source no longer exists."""
+    import readme_data
+    prov = json.loads((config.RESULTS / "readme_provenance.json").read_text())
+    fetch = readme_data.Fetch()
+    assert prov["paths"], "no values were recorded — the generator is not using Fetch"
+    for path in prov["paths"]:
+        fetch(path)          # raises readme_data.Missing if it no longer resolves
+
+
+@readme_built
+def test_readme_is_reproducible_from_results():
+    """Regenerating must be a no-op. A hand-edit to README.md is therefore detectable,
+    which is the whole point of generating it."""
+    import subprocess
+    readme = config.ROOT / "README.md"
+    before = readme.read_text()
+    subprocess.run([sys.executable, str(config.ROOT / "src" / "make_readme.py")],
+                   check=True, capture_output=True)
+    assert readme.read_text() == before, (
+        "README.md differs from what make_readme.py generates — it was hand-edited, "
+        "or a results file changed without the README being regenerated")
+
+
+@readme_built
+def test_the_readme_reports_the_negative_result():
+    """The agent's disposition does not work, and the README says so. This is a guard
+    against a future edit quietly promoting the parts that do work."""
+    text = (config.ROOT / "README.md").read_text().lower()
+    assert "simpson" in text
+    assert "does not" in text or "no signal" in text
+    assert "limitations" in text

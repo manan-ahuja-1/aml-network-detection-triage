@@ -1330,5 +1330,136 @@ ids were both real, and they were real because the check validates against the *
 rather than against the model's own list — which is the reason to define the citable set
 from what was rendered rather than from what the model claims to have used.
 
-**Next:** §C domain layer and the Streamlit demo (Day 9), which reads cached results and
-costs nothing per view; then the README generated from `results/*.json`.
+---
+
+# Day 9 — Sourcing the last unsourced number, and a threshold that was measuring the wrong thing
+
+## The FX table
+
+`config.FX_TO_USD` held approximate mid-2022 rates written from memory on Day 1. It was
+the only number in the project without a source, and `docs/LEARNING_NOTES.md` already
+listed "your FX rates aren't sourced" as one of the three genuinely hard interview
+questions, with the note *fix it before this goes on a CV*.
+
+Rates are now sourced for a single fixed date, **2022-09-01**, the dataset's first day:
+
+| source | covers |
+|---|---|
+| ECB euro foreign exchange reference rates (daily, 14:15 CET) | EUR, GBP, CHF, CAD, AUD, ILS, BRL, CNY, MXN, INR, JPY |
+| Bank of Russia official rate, USD/RUB 60.2386 | RUB — the ECB suspended its rouble reference rate in March 2022 |
+| SAMA peg, 3.75 SAR per USD since June 1986 (via IMF DSBB) | SAR — a peg, so no date sensitivity |
+| blockchain.com daily average, $20,047.68 | BTC — labelled separately; not a currency and not from a central bank |
+
+## Correcting it had to be a measurement, not an edit
+
+FX feeds every amount-derived feature **and** the money-weighted graph, so swapping the
+table changes the model — which would invalidate the arm ablation, the frozen booster,
+and a test split scored exactly once. Worse, the whole agent half is built on the alert
+set that engine produces, so a rebuild cascades into re-running Days 6–8 including their
+paid API calls.
+
+Spending that to correct a number that might not matter is a bad trade made silently. So
+`src/diagnose_fx.py` asks two separate questions before anything is promoted.
+
+**62.7% of transactions are not in US dollars**, so this is real exposure, not rounding.
+The guessed table turned out to be within 5% everywhere — worst case the **Euro at
+4.96%**, and the Euro is 23% of all rows, which makes it far and away the dominant
+exposure.
+
+| question | result |
+|---|---|
+| INFERENCE — frozen model, features rebuilt under sourced rates | val PR-AUC 0.1938 → **0.1984** (+0.0047), Spearman ρ of the scores **0.9953** |
+| TRAINING — arm C retrained from scratch under sourced rates | val PR-AUC 0.1938 → **0.1844** (−0.0094) |
+
+The shipped artifact is robust: its ranking is essentially unchanged.
+
+## The threshold I got wrong, and what caught it
+
+The first version of the diagnostic used `evaluate.PR_AUC_TOLERANCE` (0.002) as the
+materiality threshold, reasoning that `freeze_engine` already uses it to decide whether
+the engine has changed. It fired: **MATERIAL, rebuild the engine, declare a second test
+scoring.**
+
+That constant is a **reproducibility** tolerance. It exists to check that re-running
+identical code on identical data returns an identical number — a determinism test, where
+anything above floating-point noise is a genuine defect. It says nothing about whether
+two models trained on slightly different data differ meaningfully.
+
+The estimator's own bootstrap SD on validation is **0.0127**, with a 95% CI of
+**[0.1700, 0.2190]** — both computed on Day 5, long before this question existed. Against
+that, a 0.002 threshold calls anything above **0.16 standard deviations** material, which
+would flag almost any retrain of anything.
+
+Measured properly, the retrained value **0.1844 sits 0.74 SD from 0.1938, inside the
+frozen engine's 95% CI.** Not distinguishable from estimation noise on 1,083 positives.
+
+> **IMMATERIAL.** The engine stays frozen, the sourced table is recorded as provenance,
+> and this measurement is the justification.
+
+The lesson is not about FX. **A threshold borrowed from a different question will answer
+that different question.** 0.002 was a perfectly good number for "did this re-run
+reproduce?" and a nonsense one for "are these two models different?" — and the only
+reason the error surfaced is that the verdict was surprising enough to check, with the
+CI already sitting in `engine.json` from four days earlier.
+
+`judge()` is split out from the run so a corrected criterion can be re-applied to a saved
+result without repeating the work — which mattered here, because the Louvain pass alone
+takes **8,109 seconds**.
+
+## Bug fixed: the graph cache key, again
+
+Graph edges are weighted by USD volume and PageRank follows those weights, so the FX
+table is an input to every graph feature. The cache key was `train_end` and `seed` only.
+Rebuilding under corrected rates would have silently returned the old money-weighted
+graph and the entire FX experiment would have measured nothing while looking like it
+measured something.
+
+**Fourth time this project has been bitten by a cache key that omitted part of its own
+provenance** — the entity join on Day 2, graph features on Day 3, the agent's system
+prompt on Day 6, and now the currency table those same graph features are weighted by.
+
+Then immediately a fifth, caught before it could run: the single-bank experiment builds
+arm C from one institution's visible subset — same `train_end`, same seed, same FX,
+*different rows*. Without the training frame in the key it would have been handed the
+full inter-bank graph from cache and concluded that partial visibility costs nothing. A
+clean, publishable, entirely wrong number.
+
+Both are now in the key, and the cache path carries the digests so two experiments cannot
+overwrite each other's tables.
+
+## Typology accuracy nearly shipped without a control
+
+Day 8 reported typology as **58.3% any-match, 50.0% dominant-match** against
+`Patterns.txt`. Both numbers are correct and neither should have been reported alone.
+
+Storing per-case ground truth in `results/agent.json` — so the README could name one
+case's ring without reloading 5M transactions — made the problem visible immediately. The
+truth entry for `CASE-TEST-002`, an eleven-account case, lists **all eight typologies**.
+
+**Any-match is not a fixed-difficulty task.** A large case touches many injected rings, so
+"the predicted label is one of the types present" gets easier the bigger the case is. Two
+of the twelve labelled test cases have chance rates of 1.00 and 0.88 on their own. The
+honest baseline is per-case, mean(|types| / 8) = **34.4%**, against which 58.3% is a real
+but much smaller lift than it looked.
+
+**Dominant-match has a fixed 12.5% chance rate but a badly skewed class distribution.**
+Eight of the twelve labelled cases are GATHER-SCATTER, so:
+
+| | dominant-match |
+|---|---|
+| always predict GATHER-SCATTER | **66.7%** |
+| the agent | **50.0%** |
+
+**The agent does not beat the trivial baseline on typology.** At n=12 neither figure is
+well determined, and that is exactly why both now travel with their controls.
+
+The uncomfortable part is that this is the *same* error as the disposition: a metric
+reported without asking what a system doing no work would score. The disposition got a
+control from day one because the build plan demanded one (A8). Typology did not, so it
+was reported bare — and by a project whose central finding that week was that a pooled
+number without a control had fooled it once already.
+
+`typology_scores` now emits `baselines` unconditionally, and the renderer prints the
+control beside every accuracy.
+
+**Next:** B1, then the README generated from `results/*.json` and the demo.

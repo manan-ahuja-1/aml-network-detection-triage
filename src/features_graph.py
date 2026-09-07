@@ -38,6 +38,7 @@ behaviour in arm A.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import time
@@ -55,6 +56,49 @@ _F32 = "float32"
 
 GRAPH_CACHE = config.DATA_PROCESSED / "graph_features.parquet"
 GRAPH_CACHE_META = config.DATA_PROCESSED / "graph_features_meta.json"
+
+
+def fx_digest() -> str:
+    """Fingerprint of the FX table the graph would be built with.
+
+    Edges are weighted by USD volume and PageRank follows those weights, so the FX
+    table is an INPUT to every graph feature — but the cache key was `train_end` and
+    `seed` only. Rebuilding under corrected rates would have silently returned the old
+    money-weighted graph, and the FX experiment would have measured nothing while
+    looking like it measured something.
+
+    Fourth time this project has been bitten by a cache key that omitted part of its own
+    provenance: the entity join on Day 2, graph features on Day 3, the agent's system
+    prompt on Day 6, and now the currency table those same graph features are weighted
+    by. The rule has not changed — hash everything the output depends on.
+    """
+    material = json.dumps(config.require_fx_rates(), sort_keys=True)
+    return hashlib.sha256(material.encode()).hexdigest()[:12]
+
+
+def train_digest(train: pd.DataFrame) -> str:
+    """Fingerprint of the exact training rows the graph would be built from.
+
+    The graph IS a function of this frame, and the cache key did not mention it. The
+    single-bank experiment (B1) builds arm C from one institution's visible subset —
+    same `train_end`, same seed, same FX, different rows — so it would have been handed
+    the full inter-bank graph from cache and reported that partial visibility costs
+    nothing. The experiment would have produced a clean, publishable, entirely wrong
+    number.
+
+    Same lesson as `fx_digest`, found the same day: a cache key has to name every input,
+    and "the data" is an input.
+    """
+    idx = pd.util.hash_pandas_object(train.index, index=False).values
+    return hashlib.sha256(idx.tobytes()).hexdigest()[:12]
+
+
+def _cache_paths(train: pd.DataFrame) -> tuple[Path, Path]:
+    """One cached table per (FX table, training frame), so neither the FX diagnostic nor
+    the single-bank experiment can be served another run's graph."""
+    d = f"{fx_digest()}_{train_digest(train)}"
+    return (GRAPH_CACHE.with_name(f"graph_features_{d}.parquet"),
+            GRAPH_CACHE_META.with_name(f"graph_features_{d}_meta.json"))
 
 # reverse_pagerank is COMPUTED (below) but deliberately EXCLUDED from arm C.
 # Measured at the account level it correlates 0.993 with out-degree, which already
@@ -179,15 +223,20 @@ def build_graph_table(train: pd.DataFrame, train_end: str,
     `train_end` boundary it was built from and is REJECTED on mismatch. Speed without
     reintroducing the staleness bug.
     """
-    if use_cache and GRAPH_CACHE.exists() and GRAPH_CACHE_META.exists():
-        meta = json.loads(GRAPH_CACHE_META.read_text())
-        if meta.get("train_end") == train_end and meta.get("seed") == config.RANDOM_SEED:
+    cache, cache_meta = _cache_paths(train)
+    if use_cache and cache.exists() and cache_meta.exists():
+        meta = json.loads(cache_meta.read_text())
+        if (meta.get("train_end") == train_end
+                and meta.get("seed") == config.RANDOM_SEED
+                and meta.get("fx_digest") == fx_digest()
+                and meta.get("train_digest") == train_digest(train)):
             print(f"  using cached graph features ({meta['n_nodes']:,} nodes)")
             # Subset to FEATURES so an excluded column in an older cache cannot
             # silently re-enter the model.
-            return pd.read_parquet(GRAPH_CACHE)[FEATURES]
-        print(f"  cache rejected: built for train_end={meta.get('train_end')}, "
-              f"need {train_end} — rebuilding")
+            return pd.read_parquet(cache)[FEATURES]
+        print(f"  cache rejected: built for train_end={meta.get('train_end')} "
+              f"fx={meta.get('fx_digest')}, need {train_end} fx={fx_digest()} "
+              "— rebuilding")
 
     print("  building graph from TRAINING window only")
     G = build_graph(train)
@@ -195,11 +244,14 @@ def build_graph_table(train: pd.DataFrame, train_end: str,
 
     table = compute_graph_features(G)
 
-    table.to_parquet(GRAPH_CACHE)
+    table.to_parquet(cache)
     table = table[FEATURES]
-    GRAPH_CACHE_META.write_text(json.dumps({
+    cache_meta.write_text(json.dumps({
         "train_end": train_end,
         "seed": config.RANDOM_SEED,
+        "fx_digest": fx_digest(),
+        "train_digest": train_digest(train),
+        "train_rows": int(len(train)),
         "betweenness_k": config.BETWEENNESS_K,
         "n_nodes": int(G.number_of_nodes()),
         "n_edges": int(G.number_of_edges()),

@@ -128,7 +128,40 @@ def typology_scores(records: list[dict], truth: dict[str, dict]) -> dict:
         d["dominant_accuracy"] = round(d["dominant"] / d["n"], 4)
 
     n_lab = len(labelled)
+
+    # TYPOLOGY NEEDS A CONTROL TOO, AND IT NEARLY SHIPPED WITHOUT ONE
+    # ---------------------------------------------------------------
+    # The disposition was given a control from the start; typology accuracy was reported
+    # bare, and bare it is misleading in two separate ways.
+    #
+    # ANY-MATCH is not a fixed-difficulty task. A large case touches many injected rings
+    # — one 11-account case has all eight typologies in its truth set — so "the label is
+    # one of the types present" is nearly free wherever the case is big. The chance rate
+    # is therefore per-case, mean(len(types)/8), not 1/8.
+    #
+    # DOMINANT-MATCH has a fixed chance rate of 1/8, but the class distribution is very
+    # skewed: most labelled cases are GATHER-SCATTER. Always guessing the majority class
+    # is the baseline any classifier has to beat, and it is a stronger one than chance.
+    dominants = [truth[r["unit_id"]]["dominant"] for r in labelled]
+    majority_label = Counter(dominants).most_common(1)[0][0] if dominants else None
+    majority_acc = (dominants.count(majority_label) / n_lab) if n_lab else None
+    chance_any = (sum(len(truth[r["unit_id"]]["types"]) / len(config.TYPOLOGIES[:-1])
+                      for r in labelled) / n_lab) if n_lab else None
+
     return {
+        "baselines": {
+            "any_match_expected_by_chance": (round(chance_any, 4) if chance_any
+                                             else None),
+            "dominant_match_chance": round(1 / len(config.TYPOLOGIES[:-1]), 4),
+            "majority_class": majority_label,
+            "majority_class_dominant_accuracy": (round(majority_acc, 4) if majority_acc
+                                                 else None),
+            "reading": (
+                "any-match must be read against a per-case chance rate, because a large "
+                "case containing many rings makes it nearly free; dominant-match must be "
+                "read against always predicting the majority class, which is the real "
+                "control"),
+        },
         "n_labelled_cases": n_lab,
         "n_clean_cases": len(clean),
         "n_unlabelled_laundering_cases": len(unlabelled),
@@ -312,6 +345,11 @@ def score(path: Path, frame: pd.DataFrame, membership: pd.DataFrame,
     summary = summarise_mod.summarise(records)
     truth = case_truth(records, frame, membership, split)
     summary["typology"] = typology_scores(records, truth)
+    # Per-case truth travels in the artifact so the README and the demo can name a
+    # specific case's ground-truth ring without reloading 5M transactions and redoing
+    # the pattern join. It is small (one row per case) and it is the only place the
+    # mapping from case to injected ring is written down.
+    summary["case_truth"] = truth
     summary["by_case_size"] = by_case_size(records)
     summary["discrimination"] = discrimination(records)
     summary["red_flags"] = red_flags(records)
@@ -330,8 +368,12 @@ def render(report: dict) -> str:
         "",
         "  TYPOLOGY vs Patterns.txt (ring level)",
         f"    {t['typology']['coverage_note']}",
-        f"    any-match      {(t['typology']['any_match_accuracy'] or 0) * 100:.1f}%",
-        f"    dominant-match {(t['typology']['dominant_match_accuracy'] or 0) * 100:.1f}%",
+        f"    any-match      {(t['typology']['any_match_accuracy'] or 0) * 100:.1f}%"
+        f"   vs {(t['typology']['baselines']['any_match_expected_by_chance'] or 0) * 100:.1f}%"
+        " expected by chance (per-case: big cases contain many rings)",
+        f"    dominant-match {(t['typology']['dominant_match_accuracy'] or 0) * 100:.1f}%"
+        f"   vs {(t['typology']['baselines']['majority_class_dominant_accuracy'] or 0) * 100:.1f}%"
+        f" for always predicting {t['typology']['baselines']['majority_class']}",
         f"    clean cases correctly called NONE: "
         f"{t['typology']['clean_cases_called_none']}/{t['typology']['n_clean_cases']}",
         "",

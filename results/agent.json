@@ -65,6 +65,13 @@
       "billed_calls": 53
     },
     "typology": {
+      "baselines": {
+        "any_match_expected_by_chance": 0.3438,
+        "dominant_match_chance": 0.125,
+        "majority_class": "GATHER-SCATTER",
+        "majority_class_dominant_accuracy": 0.6667,
+        "reading": "any-match must be read against a per-case chance rate, because a large case containing many rings makes it nearly free; dominant-match must be read against always predicting the majority class, which is the real control"
+      },
       "n_labelled_cases": 12,
       "n_clean_cases": 31,
       "n_unlabelled_laundering_cases": 10,
@@ -110,6 +117,371 @@
         "FAN-OUT -> GATHER-SCATTER": 1,
         "SCATTER-GATHER -> FAN-IN": 1,
         "FAN-IN -> FAN-OUT": 1
+      }
+    },
+    "case_truth": {
+      "CASE-TEST-001": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-002": {
+        "bucket": "labelled",
+        "types": [
+          "BIPARTITE",
+          "CYCLE",
+          "FAN-IN",
+          "FAN-OUT",
+          "GATHER-SCATTER",
+          "RANDOM",
+          "SCATTER-GATHER",
+          "STACK"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 52
+      },
+      "CASE-TEST-003": {
+        "bucket": "labelled",
+        "types": [
+          "GATHER-SCATTER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 3
+      },
+      "CASE-TEST-004": {
+        "bucket": "labelled",
+        "types": [
+          "BIPARTITE",
+          "CYCLE",
+          "FAN-IN",
+          "FAN-OUT",
+          "GATHER-SCATTER",
+          "RANDOM",
+          "SCATTER-GATHER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 70
+      },
+      "CASE-TEST-005": {
+        "bucket": "labelled",
+        "types": [
+          "BIPARTITE",
+          "CYCLE",
+          "RANDOM",
+          "SCATTER-GATHER",
+          "STACK"
+        ],
+        "dominant": "SCATTER-GATHER",
+        "pattern_transactions": 12
+      },
+      "CASE-TEST-006": {
+        "bucket": "labelled",
+        "types": [
+          "GATHER-SCATTER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 6
+      },
+      "CASE-TEST-007": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-008": {
+        "bucket": "labelled",
+        "types": [
+          "GATHER-SCATTER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 5
+      },
+      "CASE-TEST-009": {
+        "bucket": "labelled",
+        "types": [
+          "CYCLE",
+          "FAN-OUT",
+          "GATHER-SCATTER"
+        ],
+        "dominant": "FAN-OUT",
+        "pattern_transactions": 8
+      },
+      "CASE-TEST-010": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-011": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-012": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-013": {
+        "bucket": "labelled",
+        "types": [
+          "GATHER-SCATTER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 8
+      },
+      "CASE-TEST-014": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-015": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-016": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-017": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-018": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-019": {
+        "bucket": "labelled",
+        "types": [
+          "FAN-OUT",
+          "SCATTER-GATHER",
+          "STACK"
+        ],
+        "dominant": "SCATTER-GATHER",
+        "pattern_transactions": 10
+      },
+      "CASE-TEST-020": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-021": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-022": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-023": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-024": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-025": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-026": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-027": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-028": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-029": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-030": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-031": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-032": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-033": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-034": {
+        "bucket": "labelled",
+        "types": [
+          "GATHER-SCATTER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 6
+      },
+      "CASE-TEST-035": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-036": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-037": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-038": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-039": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-040": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-041": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-042": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-043": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-044": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-045": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-046": {
+        "bucket": "labelled",
+        "types": [
+          "GATHER-SCATTER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 1
+      },
+      "CASE-TEST-047": {
+        "bucket": "labelled",
+        "types": [
+          "FAN-IN"
+        ],
+        "dominant": "FAN-IN",
+        "pattern_transactions": 2
+      },
+      "CASE-TEST-048": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-049": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-050": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-051": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-052": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-053": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
       }
     },
     "by_case_size": {
@@ -245,6 +617,13 @@
       "billed_calls": 53
     },
     "typology": {
+      "baselines": {
+        "any_match_expected_by_chance": 0.3438,
+        "dominant_match_chance": 0.125,
+        "majority_class": "GATHER-SCATTER",
+        "majority_class_dominant_accuracy": 0.6667,
+        "reading": "any-match must be read against a per-case chance rate, because a large case containing many rings makes it nearly free; dominant-match must be read against always predicting the majority class, which is the real control"
+      },
       "n_labelled_cases": 12,
       "n_clean_cases": 31,
       "n_unlabelled_laundering_cases": 10,
@@ -291,6 +670,371 @@
         "GATHER-SCATTER -> BIPARTITE": 1,
         "FAN-OUT -> GATHER-SCATTER": 1,
         "FAN-IN -> FAN-OUT": 1
+      }
+    },
+    "case_truth": {
+      "CASE-TEST-001": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-002": {
+        "bucket": "labelled",
+        "types": [
+          "BIPARTITE",
+          "CYCLE",
+          "FAN-IN",
+          "FAN-OUT",
+          "GATHER-SCATTER",
+          "RANDOM",
+          "SCATTER-GATHER",
+          "STACK"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 52
+      },
+      "CASE-TEST-003": {
+        "bucket": "labelled",
+        "types": [
+          "GATHER-SCATTER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 3
+      },
+      "CASE-TEST-004": {
+        "bucket": "labelled",
+        "types": [
+          "BIPARTITE",
+          "CYCLE",
+          "FAN-IN",
+          "FAN-OUT",
+          "GATHER-SCATTER",
+          "RANDOM",
+          "SCATTER-GATHER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 70
+      },
+      "CASE-TEST-005": {
+        "bucket": "labelled",
+        "types": [
+          "BIPARTITE",
+          "CYCLE",
+          "RANDOM",
+          "SCATTER-GATHER",
+          "STACK"
+        ],
+        "dominant": "SCATTER-GATHER",
+        "pattern_transactions": 12
+      },
+      "CASE-TEST-006": {
+        "bucket": "labelled",
+        "types": [
+          "GATHER-SCATTER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 6
+      },
+      "CASE-TEST-007": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-008": {
+        "bucket": "labelled",
+        "types": [
+          "GATHER-SCATTER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 5
+      },
+      "CASE-TEST-009": {
+        "bucket": "labelled",
+        "types": [
+          "CYCLE",
+          "FAN-OUT",
+          "GATHER-SCATTER"
+        ],
+        "dominant": "FAN-OUT",
+        "pattern_transactions": 8
+      },
+      "CASE-TEST-010": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-011": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-012": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-013": {
+        "bucket": "labelled",
+        "types": [
+          "GATHER-SCATTER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 8
+      },
+      "CASE-TEST-014": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-015": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-016": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-017": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-018": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-019": {
+        "bucket": "labelled",
+        "types": [
+          "FAN-OUT",
+          "SCATTER-GATHER",
+          "STACK"
+        ],
+        "dominant": "SCATTER-GATHER",
+        "pattern_transactions": 10
+      },
+      "CASE-TEST-020": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-021": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-022": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-023": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-024": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-025": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-026": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-027": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-028": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-029": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-030": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-031": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-032": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-033": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-034": {
+        "bucket": "labelled",
+        "types": [
+          "GATHER-SCATTER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 6
+      },
+      "CASE-TEST-035": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-036": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-037": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-038": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-039": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-040": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-041": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-042": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-043": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-044": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-045": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-046": {
+        "bucket": "labelled",
+        "types": [
+          "GATHER-SCATTER"
+        ],
+        "dominant": "GATHER-SCATTER",
+        "pattern_transactions": 1
+      },
+      "CASE-TEST-047": {
+        "bucket": "labelled",
+        "types": [
+          "FAN-IN"
+        ],
+        "dominant": "FAN-IN",
+        "pattern_transactions": 2
+      },
+      "CASE-TEST-048": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-049": {
+        "bucket": "unlabelled_laundering",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-050": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-051": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-052": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
+      },
+      "CASE-TEST-053": {
+        "bucket": "clean",
+        "types": [],
+        "dominant": null,
+        "pattern_transactions": 0
       }
     },
     "by_case_size": {

@@ -1,0 +1,19 @@
+# Deployment manifest for Streamlit Community Cloud — deliberately NOT the project's
+# requirements.txt.
+#
+# The demo reads committed JSON and parquet and renders it. It never trains, never
+# scores, never retrieves and never calls an API, so it needs none of lightgbm,
+# networkx, chromadb, anthropic, shap or scikit-learn. Those are ~1GB of wheels that
+# would push a free-tier container into a resource limit for no benefit.
+#
+# This is only possible because the heavy imports in the modules the app DOES use
+# (kb_index, triage) are inside functions rather than at module scope. If that changes,
+# this file breaks and the deploy fails at import — which is the right failure, since
+# the alternative is a demo that silently needs the whole pipeline.
+#
+# Versions match requirements.txt exactly; a mismatch between the app and the pipeline
+# that produced its data is a class of bug worth spending four lines to avoid.
+streamlit==1.63.0
+pandas==3.0.5
+numpy==2.5.2
+pyarrow==25.0.1

@@ -454,3 +454,81 @@ A case can also span several rings, so two readings are reported: any-match (the
 one of the types present) and dominant-match (the type with the most laundering
 transactions). Any-match is the operational reading — an investigator told "this is a
 fan-out" is pointed the right way even if the case also contains a stack.
+
+## 16. Borrowing a threshold from a different question
+
+The FX diagnostic needed a rule for when a change to the currency table counts as
+changing the engine. The first version used `evaluate.PR_AUC_TOLERANCE` (0.002), on the
+reasonable-sounding grounds that `freeze_engine` already uses that constant to decide
+whether the engine has changed. It returned MATERIAL — rebuild the engine, re-score test.
+
+That constant answers a different question. 0.002 is a **reproducibility** tolerance: it
+checks that re-running identical code on identical data returns an identical number, and
+in that setting anything above floating-point noise is a real defect. It carries no
+information about whether two models trained on slightly different data are meaningfully
+different.
+
+The estimator's own bootstrap standard deviation on validation is 0.0127 and its 95% CI
+is [0.1700, 0.2190] — both computed on Day 5, before this question existed. Against that
+sampling distribution, a 0.002 threshold declares anything above 0.16 SD material.
+
+Measured against the interval instead, the retrained value sits 0.74 SD from the frozen
+one, inside the CI, and is not distinguishable from estimation noise on 1,083 positives.
+
+Two general points, both of which cost nothing to apply and would have cost a great deal
+to miss here — the rebuild would have cascaded through the alert set, the case queue and
+the paid agent runs downstream of it:
+
+1. **A tolerance is defined by the question it was calibrated for.** Reusing one because
+   it lives nearby and has the right units is how a determinism check becomes a
+   significance test.
+2. **Compare a difference against the sampling distribution of the thing being
+   differenced.** The bootstrap already sitting in `engine.json` was the correct
+   yardstick and was four days old when it was needed.
+
+The verdict logic is split into `judge()` so a corrected criterion can be re-applied to a
+saved run rather than re-derived — which mattered, because the graph rebuild it sits on
+top of takes 8,109 seconds in the Louvain pass alone.
+
+## 17. Two questions a robustness check has to keep apart
+
+Correcting an input can affect a shipped model in two unrelated ways, and collapsing them
+produces a misleading answer either way:
+
+- **Inference sensitivity.** Score the existing frozen model on features rebuilt under
+  the corrected input. This asks how wrong the predictions already made are. Here: val
+  PR-AUC 0.1938 → 0.1984, with a Spearman rank correlation of 0.9953 between the two
+  score vectors. The shipped artifact ranks essentially identically.
+- **Training sensitivity.** Retrain from scratch under the corrected input. This asks
+  whether the *published number* is right. Here: 0.1938 → 0.1844.
+
+They point in opposite directions, and only the second bears on whether anything must be
+re-run. Reporting one and calling it "the FX result" would have been true and useless.
+
+## 18. Every accuracy needs the number a system doing no work would score
+
+The build plan demanded a control for the agent's disposition (A8), and it got one from
+the first run: escalate-everything. Typology accuracy was added later and reported bare —
+58.3% any-match, 50.0% dominant-match — until per-case ground truth was written into
+`results/agent.json` and made two problems visible at once.
+
+**Any-match is not a fixed-difficulty task.** A case's truth label is the set of injected
+rings its member accounts touch, and a large case touches many: one eleven-account case
+has all eight typologies in its set, so any prediction is "correct" by construction. The
+chance rate is therefore per-case — mean(|types| / 8) = 34.4% across the twelve labelled
+test cases — not a uniform 1/8. Against that, 58.3% is a real but modest lift rather than
+the strong result it reads as.
+
+**Dominant-match has a fixed 12.5% chance rate and a badly skewed class distribution.**
+Eight of twelve labelled cases are GATHER-SCATTER, so always predicting the majority class
+scores 66.7% against the agent's 50.0%. The agent does not beat the trivial baseline.
+
+Both are now computed in `typology_scores.baselines` and printed beside every accuracy.
+
+The general rule is the one this project had already learned the expensive way one section
+earlier, applied to a metric that was not covered by it: **a rate is uninterpretable
+without the rate a system doing no work would achieve, and "no work" has to be defined per
+metric.** For a triage disposition that is escalate-everything. For a skewed multi-class
+label it is the majority class, not uniform chance. For a set-membership metric it is the
+expected set size, which varies per item. Choosing the wrong "no work" baseline is the
+same error as omitting one.

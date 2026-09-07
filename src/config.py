@@ -110,12 +110,40 @@ DATA_CUTOFF = "2022-09-11"  # exclusive; keep 2022-09-01 .. 2022-09-10
 # without normalisation an amount feature compares 500 Yen with 500 US Dollars as
 # equal. Both amounts are converted to USD before any amount feature is computed.
 #
-# *** THESE ARE APPROXIMATE, STATIC, MID-2022 RATES. ***
-# They are not historical series and are not precise. That is a deliberate, stated
-# simplification: the data is synthetic and has no real FX series behind it, and the
-# features that matter (order-of-magnitude of an amount, structuring bands) are
-# robust to a few percent of FX error. The README states this explicitly rather than
-# implying a precision we do not have.
+# There are TWO tables here and the difference between them is the point.
+#
+# `FX_TO_USD` is what the frozen engine was built with: approximate mid-2022 rates
+# written from memory on Day 1 and never sourced. `FX_TO_USD_SOURCED` is the same
+# currencies priced from published references for a single fixed date — 2022-09-01,
+# the dataset's first day — with every source named below.
+#
+# The sourced table is NOT swapped in automatically. Changing FX changes every
+# amount-derived feature, which changes the model, which would invalidate the arm
+# ablation, the frozen booster and the once-scored test digest. So `src/diagnose_fx.py`
+# measures what the correction actually does before anything is promoted, and
+# `docs/NOTES.md` records which branch was taken and why. 63% of rows are non-USD, so
+# this is a real exposure rather than a rounding question.
+#
+# SOURCES (retrieved 2026-09-06, rates for 2022-09-01):
+#
+#   ECB euro foreign exchange reference rates, published daily at 14:15 CET.
+#     https://data-api.ecb.europa.eu/service/data/EXR/D.{CUR}.EUR.SP00.A
+#     Covers EUR, GBP, CHF, CAD, AUD, ILS, BRL, CNY, MXN, INR, JPY. Quoted as units of
+#     currency per EUR, converted here via the same day's EUR/USD of 1.0004.
+#
+#   Bank of Russia official rate, 2022-09-01: USD/RUB 60.2386.
+#     https://www.cbr.ru/scripts/XML_daily.asp?date_req=01/09/2022
+#     The ECB suspended publication of the rouble reference rate in March 2022, so the
+#     issuing central bank is the remaining official source.
+#
+#   Saudi riyal: pegged at SAR 3.75 per USD since June 1986, maintained by SAMA.
+#     https://dsbb.imf.org/sdds/dqaf-base/country/SAU/category/EXR00
+#     A peg, not a market quote, so it carries no date sensitivity.
+#
+#   Bitcoin, 2022-09-01 daily average across major exchanges: USD 20,047.68.
+#     https://api.blockchain.info/charts/market-price
+#     Not a currency and not from a central bank; labelled separately because a crypto
+#     spot price on one day is the least stable number in this table.
 FX_TO_USD: dict[str, float] = {
     "US Dollar": 1.0,
     "Euro": 1.05,
@@ -132,6 +160,35 @@ FX_TO_USD: dict[str, float] = {
     "Rupee": 0.0125,
     "Yen": 0.0072,
     "Bitcoin": 20000.0,
+}
+
+# Published rates for 2022-09-01. Derived arithmetic is shown so each figure can be
+# checked against the source without re-deriving it: ECB quotes are per EUR, so the
+# USD value is 1.0004 (that day's EUR/USD) divided by the quote.
+FX_TO_USD_SOURCED: dict[str, float] = {
+    "US Dollar": 1.0,
+    "Euro": 1.0004,                        # ECB EUR/USD direct
+    "UK Pound": 1.0004 / 0.86473,          # ECB GBP 0.86473 per EUR
+    "Swiss Franc": 1.0004 / 0.9802,        # ECB CHF 0.9802
+    "Canadian Dollar": 1.0004 / 1.3169,    # ECB CAD 1.3169
+    "Australian Dollar": 1.0004 / 1.4651,  # ECB AUD 1.4651
+    "Saudi Riyal": 1.0 / 3.75,             # SAMA peg, 3.75 SAR per USD
+    "Shekel": 1.0004 / 3.3644,             # ECB ILS 3.3644
+    "Brazil Real": 1.0004 / 5.2239,        # ECB BRL 5.2239
+    "Yuan": 1.0004 / 6.9017,               # ECB CNY 6.9017
+    "Mexican Peso": 1.0004 / 20.1954,      # ECB MXN 20.1954
+    "Ruble": 1.0 / 60.2386,                # Bank of Russia USD/RUB 60.2386
+    "Rupee": 1.0004 / 79.6195,             # ECB INR 79.6195
+    "Yen": 1.0004 / 139.34,                # ECB JPY 139.34
+    "Bitcoin": 20047.68,                   # blockchain.com daily average
+}
+
+FX_SOURCE_DATE: Final[str] = "2022-09-01"
+FX_SOURCES: Final[dict[str, str]] = {
+    "ecb": "https://data-api.ecb.europa.eu/service/data/EXR/",
+    "cbr": "https://www.cbr.ru/scripts/XML_daily.asp?date_req=01/09/2022",
+    "sama_peg": "https://dsbb.imf.org/sdds/dqaf-base/country/SAU/category/EXR00",
+    "bitcoin": "https://api.blockchain.info/charts/market-price",
 }
 
 # ---------------------------------------------------------------------------
