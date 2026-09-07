@@ -10,7 +10,9 @@ here; arithmetic is not.
 
 from __future__ import annotations
 
+import re
 import sys
+import textwrap
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -384,6 +386,75 @@ ranker.
 """
 
 
+WALKTHROUGH_CASE = "CASE-TEST-002"
+
+
+def walkthrough(f: Fetch) -> str:
+    """C6 — one case, end to end, chosen because it shows the failure as well as the win."""
+    if not (f.has("triage") and f.has("agent")):
+        return ""
+    cid = WALKTHROUGH_CASE
+    rec = f(f"triage.{cid}", default=None)
+    truth = f(f"agent.test_retrieval_on.case_truth.{cid}", default=None)
+    if not rec or not truth:
+        return ""
+    res, val = rec["result"], rec["validation"]
+    note = res["case_note"]
+    bad = val["invalid_narrative_accounts"]
+    # Derive the splice rather than asserting it: find the real members that share the
+    # fabricated id's bank prefix and its account suffix. If the pattern ever stops
+    # holding, the sentence below changes with it instead of going quietly stale.
+    fake = bad[0] if bad else None
+    members = rec.get("members") or []
+    prefix_twin = suffix_twin = None
+    if fake and ":" in fake:
+        pre, suf = fake.split(":", 1)
+        prefix_twin = next((m for m in members if m.startswith(pre + ":")), None)
+        suffix_twin = next((m for m in members if m.endswith(":" + suf)), None)
+    flags = "\n".join(f"  - {x}" for x in res["red_flag_indicators"])
+    return f"""
+## One case, end to end
+
+`{cid}`, from the test queue. Chosen because it shows the layer working *and* contains
+the single fabricated identifier in the entire test run — a walkthrough that only shows
+the win is an advert.
+
+**What the engine handed over.** {rec['n_members']} alerted accounts that transact with
+each other, grouped into one case. The agent sees a dossier: the case's structure, a
+per-member summary, up to 40 citable transactions, SHAP attributions for the
+highest-scoring members, and retrieved regulatory passages. It does **not** see the
+ground-truth label, the other accounts in the ring, or anything outside the case.
+
+**What it wrote.** Disposition **{res['disposition']}**, typology
+**{res['pattern_classification']}**, confidence {res['confidence']}, citing
+{val['n_cited']} transactions across a {val['note_words']}-word note.
+
+> {note['introduction']}
+
+**Was it right?** The case's members touch a named ring in `Patterns.txt` whose dominant
+type is **{truth['dominant']}** across {truth['pattern_transactions']} labelled
+transactions — so the topology call is correct, and the case is genuinely productive.
+
+The indicators it named, all from FFIEC Appendix F and the typology reference rather than
+its own voice:
+
+{flags}
+
+**Where it went wrong.** The note names account `{fake}`, which does not exist. Both halves
+of it do: `{suffix_twin}` is a member of this case, and `{prefix_twin}` is a *different*
+member. The model spliced one member's bank prefix onto another's account number.
+
+That is a compositional error rather than an invention from nothing, and it is the only
+one in 53 cases. It is also the reason the grounding check scans prose and not just the
+structured citation list — checked against what the dossier **rendered**, so an account
+the case contains but the dossier withheld counts as fabricated too. Before that check
+existed this was undetectable.
+
+**What it would cost to run.** ${f("agent.test_retrieval_on.cost.per_alert_usd"):.4f} per
+case, {f("agent.test_retrieval_on.cost.median_latency_seconds")}s median latency.
+"""
+
+
 def closing(f: Fetch) -> str:
     return f"""
 ## Regulatory grounding
@@ -489,14 +560,55 @@ half needs an `ANTHROPIC_API_KEY`; every reported agent number is already in
 """
 
 
+def reflow(text: str, width: int = 92) -> str:
+    """Re-wrap prose paragraphs after substitution.
+
+    Values are interpolated into a hand-wrapped template, so a short number where a long
+    placeholder stood leaves a ragged line. Markdown renders it correctly either way —
+    single newlines are soft — but the raw file is read on GitHub too, and a scrappy
+    source reads as a generator nobody looked at.
+
+    Tables, fenced code, headings, list items, blockquotes and image lines are left
+    exactly as written; only ordinary prose is rewrapped.
+    """
+    out: list[str] = []
+    fenced = False
+    paragraph: list[str] = []
+
+    def flush() -> None:
+        if paragraph:
+            out.extend(textwrap.wrap(" ".join(paragraph), width=width,
+                                     break_long_words=False, break_on_hyphens=False))
+            paragraph.clear()
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            flush()
+            fenced = not fenced
+            out.append(line)
+        elif fenced:
+            out.append(line)
+        elif (not stripped
+              or stripped.startswith(("|", "#", ">", "![", "---"))
+              # a bullet needs the space: "* item" is a list, "**Headline**" is bold
+              or re.match(r"^([-*+] |\d+\. )", stripped)):
+            flush()
+            out.append(line)
+        else:
+            paragraph.append(stripped)
+    flush()
+    return "\n".join(out) + "\n"
+
+
 def main() -> int:
     f = Fetch()
     if f.absent:
         print(f"note: missing {', '.join(f.absent)} — those sections will be omitted\n")
 
     parts = [header(f), problem(f), typologies(), engine(f), single_bank(f), fx(f),
-             agent(f), closing(f)]
-    OUT.write_text("\n".join(p.rstrip() + "\n" for p in parts if p.strip()))
+             agent(f), walkthrough(f), closing(f)]
+    OUT.write_text(reflow("\n".join(p.rstrip() + "\n" for p in parts if p.strip())))
     f.write_provenance()
     print(f"wrote {OUT.name}  ({len(OUT.read_text().splitlines())} lines, "
           f"{len(set(f.used))} distinct values from results/)")

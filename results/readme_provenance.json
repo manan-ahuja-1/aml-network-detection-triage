@@ -1,0 +1,36 @@
+{
+  "note": "every number rendered into README.md, and the results path it came from. `make_readme.py` records these as it renders; the test suite asserts each still resolves, so a number cannot outlive its source.",
+  "files_read": {
+    "engine": "engine.json",
+    "arms": "arms.json",
+    "agent": "agent.json",
+    "fx": "fx_diagnosis.json",
+    "triage": "triage_cases_test.json"
+  },
+  "files_absent": [
+    "single_bank.json"
+  ],
+  "n_values": 22,
+  "paths": [
+    "agent.test_retrieval_on.case_note.n_with_fabricated_id_in_prose",
+    "agent.test_retrieval_on.case_truth.CASE-TEST-002",
+    "agent.test_retrieval_on.cost.median_latency_seconds",
+    "agent.test_retrieval_on.cost.per_alert_usd",
+    "agent.test_retrieval_on.discrimination.overall.fisher_p_one_sided",
+    "arms.arms.B.val.pr_auc",
+    "engine.engine.n_features",
+    "engine.splits.test.pr_auc",
+    "engine.splits.test.pr_auc_bootstrap.ci_high",
+    "engine.splits.test.pr_auc_bootstrap.ci_low",
+    "engine.splits.test.precision_at_k.100.precision",
+    "engine.splits.val.base_rate",
+    "engine.splits.val.n",
+    "engine.splits.val.positives",
+    "engine.splits.val.pr_auc",
+    "engine.splits.val.pr_auc_bootstrap.ci_high",
+    "engine.splits.val.pr_auc_bootstrap.ci_low",
+    "engine.splits.val.precision_at_k.100.precision",
+    "engine.test_score_digest",
+    "triage.CASE-TEST-002"
+  ]
+}

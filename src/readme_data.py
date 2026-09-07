@@ -29,6 +29,7 @@ FILES = {
     "agent": "agent.json",
     "single_bank": "single_bank.json",
     "fx": "fx_diagnosis.json",
+    "triage": "triage_cases_test.json",
 }
 
 
@@ -46,7 +47,13 @@ class Fetch:
         for key, name in FILES.items():
             path = config.RESULTS / name
             if path.exists():
-                self.data[key] = json.loads(path.read_text())
+                loaded = json.loads(path.read_text())
+                # One results file is a list of per-case records rather than a mapping.
+                # Key it by unit_id so a path like `triage.CASE-TEST-002.n_members`
+                # resolves the same way every other path does.
+                if isinstance(loaded, list):
+                    loaded = {r["unit_id"]: r for r in loaded if "unit_id" in r}
+                self.data[key] = loaded
             else:
                 self.absent.append(name)
 
