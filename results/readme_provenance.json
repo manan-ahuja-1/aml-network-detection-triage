@@ -4,13 +4,12 @@
     "engine": "engine.json",
     "arms": "arms.json",
     "agent": "agent.json",
+    "single_bank": "single_bank.json",
     "fx": "fx_diagnosis.json",
     "triage": "triage_cases_test.json"
   },
-  "files_absent": [
-    "single_bank.json"
-  ],
-  "n_values": 22,
+  "files_absent": [],
+  "n_values": 24,
   "paths": [
     "agent.test_retrieval_on.case_note.n_with_fabricated_id_in_prose",
     "agent.test_retrieval_on.case_truth.CASE-TEST-002",
@@ -18,6 +17,7 @@
     "agent.test_retrieval_on.cost.per_alert_usd",
     "agent.test_retrieval_on.discrimination.overall.fisher_p_one_sided",
     "arms.arms.B.val.pr_auc",
+    "arms.arms.C.val.pr_auc",
     "engine.engine.n_features",
     "engine.splits.test.pr_auc",
     "engine.splits.test.pr_auc_bootstrap.ci_high",

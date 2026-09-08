@@ -27,6 +27,8 @@ results/**/*.tmp
 .DS_Store
 
 docs/LEARNING_NOTES.md
+PROJECTSep.md
+PROJECTSep_v3.md
 
 # --- derived model + index artefacts ---
 # The frozen booster is 15 MB and regenerable in ten minutes from `make eval`; the
@@ -38,3 +40,9 @@ models/
 # Per-row score caches. ~48 MB of float columns, regenerable from `make figures`, and
 # only an input to the PR-curve chart -- the chart itself IS committed.
 results/curve_scores.parquet
+
+# Same rule, second file: 44 MB of per-row validation scores for the visibility arms,
+# regenerable from `make single-bank`. Nothing reports from it -- `single_bank.py` reads it
+# back to recover the arm B floor without retraining, and every number the README shows
+# comes from results/*.json. Committing it would quadruple the clone for a cache.
+results/single_bank_scores.parquet

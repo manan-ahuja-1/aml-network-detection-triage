@@ -26,6 +26,7 @@ help:
 	@echo "  make figures     Redraw the result charts (cached scores after first run)"
 	@echo "  make kb          Build the ChromaDB index over kb/corpus (~1 min)"
 	@echo "  make single-bank How much of the network graph features need (~1h)"
+	@echo "  make single-bank-replicates  Re-run the curve under two more edge draws"
 	@echo "  make fx          Source the FX table and measure whether it moves the engine"
 	@echo "  make agent-eval  Evaluate the triage agent, write results/agent.json"
 	@echo "  make agent-run   COSTS MONEY. Run the agent over the test case queue"
@@ -93,9 +94,21 @@ agent-run:
 	$(PY) src/agent/run_cases.py --split test --no-rag
 
 # B1: how much of the network graph features need. Rebuilds the graph at four
-# visibility fractions and retrains each (~1h). Writes results/single_bank.json.
+# visibility fractions and retrains each (~1h). Writes results/single_bank.json plus
+# single_bank_scores.parquet, which the paired comparisons are computed from.
 single-bank:
 	$(PY) src/single_bank.py
+
+# Seed replicates: re-draw WHICH EDGES ARE VISIBLE, so the curve's shape can be told
+# apart from one unlucky subsample. Only the partial fractions are re-run -- arm B has
+# no graph and the 100% arm does no sampling, so neither depends on the seed, and the
+# floor is read back from single_bank_scores.parquet instead of retrained.
+# Both seeds run concurrently: graph construction is single-threaded networkx.
+single-bank-replicates:
+	$(PY) src/single_bank.py --seed 7 & \
+	$(PY) src/single_bank.py --seed 2024 & \
+	wait
+	$(PY) src/single_bank.py --aggregate
 
 # Sources the FX table for 2022-09-01 and measures whether correcting it changes the
 # engine, at inference and after a retrain (~2.6h, the Louvain pass dominates).
@@ -119,7 +132,8 @@ demo:
 # The reproducibility claim in the README rests on this target: raw data in,
 # every reported number out, no manual steps. agent-run is excluded because it
 # spends money; its outputs are committed.
-all: check data features train eval figures kb single-bank agent-eval demo-bundle readme test
+all: check data features train eval figures kb single-bank single-bank-replicates \
+     agent-eval demo-bundle readme test
 
 test:
 	$(PY) -m pytest tests/ -q

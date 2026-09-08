@@ -532,3 +532,108 @@ metric.** For a triage disposition that is escalate-everything. For a skewed mul
 label it is the majority class, not uniform chance. For a set-membership metric it is the
 expected set size, which varies per item. Choosing the wrong "no work" baseline is the
 same error as omitting one.
+
+## 19. The ablation's headline lift, tested properly
+
+Arm B (0.1815) and arm C (0.1938) were compared for eight days by their marginal 95% CIs,
+which overlap: [0.1588, 0.2063] against [0.1700, 0.2190]. Overlapping marginal intervals
+are the *conservative* test and were the only one available, because nothing until B1 kept
+per-row validation scores for more than one arm at a time.
+
+B1 needed a paired bootstrap for its own reasons, and persisting the score vectors made the
+arm B / arm C comparison free. Both arms score the same 1,015,300 validation rows, so the
+correct question is the distribution of the difference:
+
+> **+0.0123 PR-AUC, 95% CI [−0.0025, +0.0268].** 95.3% of paired resamples favour arm C;
+> the two-sided interval just includes zero.
+
+The pairing tightens the estimate a great deal relative to comparing the marginals — and it
+still does not clear the bar. **The graph lift is at the edge of conventional significance,
+not established.** On 1,083 validation positives this dataset cannot separate a +0.012
+PR-AUC difference from zero at 95%.
+
+What follows from that, and what does not:
+
+- The README reports the interval rather than the point estimate. "Graph topology lifts
+  PR-AUC from 0.1815 to 0.1938" is replaced everywhere by the delta and its CI.
+- **Arm D's rejection is unaffected.** It was rejected for failing to beat arm C across
+  three seeds and two dimensions, which does not depend on how arm C compares to arm B.
+- The engine is not retrained or re-selected. Arm C remains the best validation arm, and
+  selecting on a point estimate is the right thing to do when a choice must be made; the
+  correction is to how the result is *reported*, not to which model was chosen.
+- The design decision this vindicates is building arm B to be hard to beat. A weaker
+  baseline would have produced a large, comfortable, and much less honest lift.
+
+The general point: **an interval is not decoration on a point estimate, it is the claim.**
+A difference worth reporting to four decimals off 1,083 events needs the interval printed
+beside it, and if the interval spans zero that has to be said in the same sentence rather
+than left in an appendix.
+
+## 20. Choosing an experimental subject on one criterion selects an outlier
+
+B1 called for re-running the engine on a single institution's visible subgraph. The subject
+was picked on one criterion — the bank with the most validation positives, because anything
+smaller could not be bootstrapped — and that produced bank 070: 15 accounts carrying 452,751
+transactions, no internal transfers at all, a clearing entity rather than a bank. The engine
+scored below chance on its slice, and the resulting table was clean, real and meaningless.
+
+The criterion that made it the only viable subject is the same criterion that made it
+unrepresentative. In a dataset of 30,528 banks with a median of 4 accounts, the only entity
+with enough events to measure is by construction the one that is not like the others.
+**Sample-size sufficiency and representativeness pull against each other, and satisfying the
+first without checking the second is how a study ends up measuring its own selection rule.**
+
+Two minutes describing the candidate — accounts, transactions per account, internal share —
+before running anything would have caught it. That description now lives in
+`single_bank.DATASET_STRUCTURE`, so the evidence for abandoning the design travels with the
+results rather than only in a commit message.
+
+The generalisation is a pre-flight, not a rule about banks: **before committing to a long
+run, describe the thing you selected and check it looks like the population you mean to
+generalise to.** It costs minutes against hours, and the failure it catches is silent —
+nothing errors, and the output is a table you would otherwise have believed.
+
+## 21. Two measurements from one training run are one observation
+
+The visibility experiment produced a shape — PR-AUC worst in the middle of the range — and
+I argued it was corroborated by an independent measurement: early stopping peaked at 1,961
+rounds with no graph and 2,064 with the full one, but collapsed to 381 and 196 at 50% and
+25% visibility. Two quantities, same story, apparently converging evidence.
+
+They are not independent. Best-iteration and final PR-AUC come from **the same training
+run on the same sampled graph**. If that particular draw of edges produced misleading
+features, both numbers move together by construction. Reading them as two witnesses is
+double-counting a single observation, and it made a one-draw result feel like a replicated
+one.
+
+The replicate settled it. At 25% visibility a second edge draw gave PR-AUC 0.1904 against
+0.1421, and best-iteration 2,066 against 196 — both numbers flipped together, exactly as
+the objection predicts.
+
+**The general rule: independence is a property of the sampling, not of the metric.** Two
+statistics computed from one fitted model are one draw from the process being studied, no
+matter how different they look or how mechanistically linked the story connecting them is.
+Independent evidence requires an independent draw — here, a different subsample.
+
+## 22. One draw per condition cannot separate a condition effect from a draw effect
+
+The curve varied graph visibility across four levels with one subsample at each, then
+attributed the differences to visibility. That design cannot do it: each point confounds
+"this visibility level" with "this particular set of edges", and nothing in the data
+separates them.
+
+How badly it confounds them is now measured. Holding visibility fixed at 25% and varying
+only the seed moves PR-AUC across roughly 0.048 — and at 50% the three draws span 0.1210,
+0.1654 and 0.1691, a comparable spread. **The within-condition variance is several times
+the arm C over arm B lift the project reports as its headline.** No between-condition
+comparison at n=1 per condition can survive that.
+
+The fix is not a better test on the same data; it is more draws per condition. Three is
+enough to establish that the variance dominates and therefore that the original question
+is unanswerable at this scale — which is what the README now says — and nowhere near
+enough to estimate the visibility effect itself.
+
+The cheap version of this check, which would have saved several hours: **before believing
+a difference between conditions, vary the nuisance factor with the condition held fixed.**
+One extra run at one condition is enough to find out whether the noise floor is above the
+effect you are about to write up.

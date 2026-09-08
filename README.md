@@ -12,13 +12,22 @@ transaction monitoring  ->  alert  ->  L1 triage  ->  L2 investigation  ->  SAR 
    [ engine: arm C ]              [ agent: case triage ]
 ```
 
-**Headline, stated honestly.** The engine works: PR-AUC 0.1938 on validation against 0.1815
-for a deliberately strong account-aggregate baseline, with precision@100 of 88%. The agent's
-**disposition does not** — its escalate/close decision is statistically indistinguishable
-from the queue's base rate (Fisher exact, p=0.51), and an earlier configuration that
-appeared to beat the control by 6.7 points turned out to be Simpson's paradox. What the
-agent does deliver is measured too: complete, grounded, SAR-structured case notes with 1
-fabricated identifier across roughly 26,500 words of generated narrative.
+**Headline, stated honestly — which means with the intervals.**
+
+The engine ranks well: PR-AUC 0.1938 on validation with precision@100 of 88%, against 0.1815
+for a deliberately strong account-aggregate baseline. But that **+0.012 lift from graph
+topology is at the edge of significance, not established** — paired 95% CI [-0.0025,
++0.0268], 95.3% of resamples favouring it. It is reported that way throughout rather than as
+a settled number.
+
+The agent's **disposition does not work at all** — its escalate/close decision is
+statistically indistinguishable from the queue's base rate (Fisher exact, p=0.51), and an
+earlier configuration that appeared to beat the control by 6.7 points turned out to be
+Simpson's paradox. What it does deliver is measured too: complete, grounded, SAR-structured
+case notes with 1 fabricated identifier across roughly 26,500 words of generated narrative.
+
+Three headline numbers in this project did not survive being asked what a system doing no
+work would score. Finding that out is most of what the repo is for.
 
 
 ## The problem is analyst capacity, not detection power
@@ -86,6 +95,28 @@ a transaction-only baseline would have produced a much larger and much less hone
 
 Arm D added node2vec embeddings over the same graph and **did not beat explicit topology**
 across three seeds and two dimensions. It is reported rather than dropped.
+
+#### How solid is that lift? Less than it first looked
+
+The arms above were compared by their 95% CIs, which overlap — the conservative reading, and
+the only one available until the visibility experiment (see Limitations) began persisting
+per-row scores for every arm. Both arms score the **same** validation rows, so the correct
+test is paired, and it says something more careful than the table does:
+
+> arm C over arm B: **+0.0123 PR-AUC, 95% CI [-0.0025, +0.0268]** — 95.3% of paired
+> bootstrap resamples favour the graph features, and the two-sided interval just includes
+> zero.
+
+**That is at the edge of conventional significance, not established.** The direction is
+consistent and the effect is where the domain argument predicts it, but on 1,083 validation
+positives this dataset cannot separate a +0.012 PR-AUC difference from zero at 95%. The
+honest claim is "graph topology probably helps, by about this much, and here is the
+interval" — not "graph topology lifts PR-AUC from 0.1815 to 0.1938".
+
+Reporting the point estimate alone would repeat exactly the error this project has now
+caught three times: the agent's +6.7-point control lift that was Simpson's paradox, the
+typology accuracy that lost to always guessing the majority class, and the FX materiality
+threshold borrowed from a question it did not answer.
 
 ### The test split was scored exactly once
 
@@ -194,6 +225,7 @@ means improving on a model that used strictly more information.
 | fabricated identifiers in ~26,500 words of narrative | **1** (1.9% of cases) |
 | typology vs `Patterns.txt`, any-match | 58.3% (chance: 34.4%) |
 | typology, dominant-match | 50.0% (**majority-class baseline: 66.7%**) |
+| typology, macro-F1 over 5 classes | 0.15 (**majority-class baseline: 0.16**) |
 | cost per case | $0.0123 |
 | median latency | 27.9s |
 
@@ -217,9 +249,18 @@ honest chance rate is per-case: 34.4%, against which 58.3% is a real but modest 
 *Dominant-match* has a fixed 12.5% chance rate but a badly skewed class distribution:
 **always predicting GATHER-SCATTER scores 66.7%**, and the agent scores 50.0%.
 
-So the agent does **not** beat the trivial baseline on typology. At twelve labelled cases
-neither figure is well determined — which is the point. The number is reported with its
-control and its sample size rather than on its own, the same way the disposition was.
+So the agent does **not** beat the trivial baseline on typology. **Macro-F1 was added to
+test whether that verdict was an artifact of the metric** — accuracy averages over cases and
+so rewards the majority class, whereas macro-F1 averages over classes and should punish a
+baseline that never names the other seven. It punishes it, and the agent scores lower still:
+0.15 against 0.16, because it names no minority typology correctly either. Both arms are
+scored over the same class set, since macro-F1 divides by the number of classes averaged
+over and an arm predicting a typology that never occurs would otherwise be penalised on the
+denominator alone.
+
+At twelve labelled cases none of these figures is well determined — which is the point. Each
+is reported with its control and its sample size rather than on its own, the same way the
+disposition was.
 
 ### Field order in a structured output is generation order
 
@@ -267,7 +308,13 @@ ring, or anything outside the case.
 **What it wrote.** Disposition **escalate**, typology **GATHER-SCATTER**, confidence high,
 citing 40 transactions across a 521-word note.
 
-> This case involves 11 accounts exhibiting high-volume internal transfers and heavy receipt of funds from external parties, concentrated in Saudi Riyal. The case shows characteristics of a gather-scatter layering topology: funds flowing in from 23 external sources ($167.8k) are internally redistributed across the group, then dispersed outward to 9 external payees ($57.1k). The pattern is marked by dense interconnection among member accounts, rapid sequential transfers, and significant embeddedness scores flagged by the model, all consistent with money laundering through account-to-account layering.
+> This case involves 11 accounts exhibiting high-volume internal transfers and heavy receipt
+> of funds from external parties, concentrated in Saudi Riyal. The case shows
+> characteristics of a gather-scatter layering topology: funds flowing in from 23 external
+> sources ($167.8k) are internally redistributed across the group, then dispersed outward to
+> 9 external payees ($57.1k). The pattern is marked by dense interconnection among member
+> accounts, rapid sequential transfers, and significant embeddedness scores flagged by the
+> model, all consistent with money laundering through account-to-account layering.
 
 **Was it right?** The case's members touch a named ring in `Patterns.txt` whose dominant
 type is **GATHER-SCATTER** across 52 labelled transactions — so the topology call is
@@ -346,8 +393,16 @@ Stated plainly, because they are the first thing a reviewer should ask about.
 
 - **The data is synthetic.** IBM's generator injects laundering patterns; real laundering
 is not drawn from eight named topologies. Nothing here transfers directly.
-- **Full inter-bank visibility is a synthetic-data luxury**, quantified above rather than
-disclaimed.
+- **Full inter-bank visibility is a synthetic-data luxury, and this dataset cannot quantify
+what it is worth.** The plan was to re-run the engine on one bank's visible subgraph. There
+are **30,528 banks** here with a median of **4 accounts**, and the only one large enough to
+test turns out to be a clearing entity — **15 accounts carrying 452,751 transactions** with
+zero internal transfers, on whose slice the engine scores below chance. Degrading the graph
+by a random fraction instead is inconclusive for a different reason: at 25% visibility the
+PR-AUC spans 0.1421–0.1904 across 3 draws depending purely on *which* edges are sampled — a
+spread of 0.048, several times the graph lift itself. **Which edges you see swamps how
+many.** Full detail in [docs/NOTES.md](docs/NOTES.md); the numbers are in
+`results/single_bank.json`.
 - **No entity resolution.** Real AML operates on customers who hold many accounts across
 many institutions. This works at the account level, with only a static account-to-entity
 mapping.

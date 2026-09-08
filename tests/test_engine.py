@@ -364,3 +364,146 @@ def test_the_readme_reports_the_negative_result():
     assert "simpson" in text
     assert "does not" in text or "no signal" in text
     assert "limitations" in text
+
+
+def test_paired_bootstrap_keeps_the_pairing():
+    """Two arms scored on identical rows must be compared paired, not by overlapping
+    marginal CIs. The tell that the pairing is real: two IDENTICAL score vectors differ
+    by exactly zero on every resample, so the interval has zero width. An unpaired
+    comparison of the same two vectors would produce a wide interval around zero and
+    call a real difference 'not significant'."""
+    import numpy as np
+
+    import single_bank
+    rng = np.random.default_rng(0)
+    n = 50_000
+    y = (rng.random(n) < 0.002).astype(int)
+    noise = rng.random(n)
+    informative = np.clip(y * 0.5 + rng.random(n) * 0.5, 0, 1)
+
+    out = single_bank.paired_deltas(
+        {"graph_none": noise, "identical": noise.copy(), "better": informative},
+        y, n_resamples=200)
+
+    assert out["identical"]["delta_vs_no_graph"] == 0.0
+    assert out["identical"]["ci95"] == [0.0, 0.0]
+    assert not out["identical"]["excludes_zero"]
+    assert out["better"]["delta_vs_no_graph"] > 0
+    assert out["better"]["excludes_zero"]
+
+
+def test_paired_bootstrap_is_stratified():
+    """Same reason bootstrap_pr_auc is: at a 1-in-937 base rate an unstratified draw
+    varies its positive count by several percent, and PR-AUC moves with the base rate."""
+    import inspect
+
+    import single_bank
+    src = inspect.getsource(single_bank.paired_deltas)
+    assert "np.flatnonzero(y == 1)" in src and "np.flatnonzero(y == 0)" in src
+    assert "counts[pos]" in src and "counts[neg]" in src
+
+
+# ---------------------------------------------------------------------------
+# Seed replicates for the visibility curve
+# ---------------------------------------------------------------------------
+def test_the_seed_changes_which_edges_are_visible():
+    """A replicate must actually resample the graph. If the seed did not reach
+    `train.sample`, every 'replicate' would rebuild the identical graph, the spread would
+    be exactly zero, and the experiment would report perfect reproducibility as evidence
+    of a robust effect."""
+    import inspect
+
+    import single_bank
+    src = inspect.getsource(single_bank.build_arm_with_partial_graph)
+    assert "random_state=seed" in src
+    sig = inspect.signature(single_bank.build_arm_with_partial_graph)
+    assert "seed" in sig.parameters
+
+
+@needs_data
+def test_two_seeds_produce_different_graph_cache_keys():
+    """The digest has to separate them, or the second seed is served the first's graph —
+    the same class of bug that has bitten this project five times."""
+    import features_graph as fg
+    frame = splits.load_transactions(columns=["timestamp", "from_id", "to_id"])
+    train = splits.train_frame(frame)
+    a = train.sample(frac=0.25, random_state=42)
+    b = train.sample(frac=0.25, random_state=7)
+    assert fg.train_digest(a) != fg.train_digest(b)
+    assert fg._cache_paths(a)[0] != fg._cache_paths(b)[0]
+
+
+def test_replicates_do_not_rerun_the_seed_independent_arms():
+    """Arm B has no graph and the 100% arm does no sampling, so neither depends on the
+    seed. Re-running them would cost ~18 minutes per replicate and produce identical
+    numbers; the floor is read back from the persisted scores instead."""
+    import inspect
+
+    import single_bank
+    src = inspect.getsource(single_bank.replicate)
+    assert "SCORES_OUT" in src and "graph_none" in src
+    assert "build_features.build_arm(\"B\"" not in src
+
+
+def test_aggregator_reports_a_count_not_a_p_value():
+    """Three seeds supports a mean, a range and a count of replicates separating from the
+    floor. It does not support a significance test, and running one would dress the same
+    three numbers up as an inference they cannot carry."""
+    import inspect
+
+    import single_bank
+    src = inspect.getsource(single_bank.aggregate)
+    assert "n_separated_from_floor" in src
+    assert "pr_auc_range" in src
+    for forbidden in ("ttest", "t_test", "scipy.stats.ttest"):
+        assert forbidden not in src
+
+
+@readme_built
+def test_the_readme_states_an_interval_beside_the_ablation_lift():
+    """The graph lift is at the edge of significance. The README must not present
+    0.1815 -> 0.1938 as a settled result anywhere, including its opening paragraph."""
+    text = (config.ROOT / "README.md").read_text()
+    assert "edge of significance" in text or "edge of conventional significance" in text
+    assert "+0.0123" in text and "[-0.0025, +0.0268]" in text.replace("−", "-")
+
+
+def test_replicate_merges_rather_than_overwrites():
+    """A pre-flight runs one cheap fraction first; overwriting the seed file afterwards
+    would discard ~14 minutes of work for no reason."""
+    import inspect
+
+    import single_bank
+    src = inspect.getsource(single_bank.replicate)
+    assert "json.loads(out.read_text()) if out.exists()" in src
+    assert '**report.get("arms", {})' in src
+
+
+@readme_built
+def test_the_readme_does_not_claim_a_partial_graph_is_worse_than_none():
+    """That claim was made, published in a draft, and then overturned by its own replicate:
+    at 25% visibility one edge draw gave PR-AUC 0.1421 and another 0.1904. It must not
+    creep back in on a later edit."""
+    # The README is wrapped at 92 columns, so any phrase check has to be
+    # whitespace-insensitive or it silently passes whenever a line break lands mid-claim.
+    text = " ".join((config.ROOT / "README.md").read_text().lower().split())
+    for retracted in ("worse than no graph",
+                      "do not degrade gracefully",
+                      "partial graph is worse"):
+        assert retracted not in text, f"retracted claim reappeared: {retracted!r}"
+    # what replaced it must still be there
+    assert "which edges you see swamps how many" in text
+
+
+@readme_built
+def test_the_visibility_experiment_is_reported_as_inconclusive():
+    """It belongs in Limitations as a fact about the dataset, not as a result about the
+    model. If it ever grows back into a section, this fails."""
+    raw = (config.ROOT / "README.md").read_text()
+    flat = " ".join(raw.split())
+    assert "cannot quantify what it is worth" in flat
+    # position check has to run on the raw text; compare section offsets, not the flattened
+    # copy, so "is it inside Limitations" stays a real question about document order
+    limitations = raw.index("## Limitations")
+    finding = raw.index("Full inter-bank visibility is a synthetic-data luxury")
+    assert finding > limitations, "the visibility finding moved out of Limitations"

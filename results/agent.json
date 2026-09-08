@@ -70,6 +70,7 @@
         "dominant_match_chance": 0.125,
         "majority_class": "GATHER-SCATTER",
         "majority_class_dominant_accuracy": 0.6667,
+        "majority_class_macro_f1": 0.16,
         "reading": "any-match must be read against a per-case chance rate, because a large case containing many rings makes it nearly free; dominant-match must be read against always predicting the majority class, which is the real control"
       },
       "n_labelled_cases": 12,
@@ -78,6 +79,45 @@
       "coverage_note": "typology accuracy is computed on the 12 cases whose members touch a named ring in the scored window; 10 productive cases have laundering the simulator did not group into a ring and are excluded rather than scored against NONE",
       "any_match_accuracy": 0.5833,
       "dominant_match_accuracy": 0.5,
+      "macro_f1": 0.15,
+      "macro_f1_note": "macro-F1 over the 5 typologies present in truth or in either arm's predictions, across 12 labelled cases; the baseline is scored over the same class set, or the arm predicting fewer classes would win on the denominator. It was added expecting it to favour the agent over a constant majority-class prediction, and it does not: the agent names no minority typology correctly, so the constant baseline wins on macro-F1 as well as on accuracy. At n=12 read either as a direction, not a point estimate",
+      "per_class_f1": {
+        "FAN-IN": {
+          "n_true": 1,
+          "n_predicted": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "FAN-OUT": {
+          "n_true": 1,
+          "n_predicted": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "GATHER-SCATTER": {
+          "n_true": 8,
+          "n_predicted": 8,
+          "precision": 0.75,
+          "recall": 0.75,
+          "f1": 0.75
+        },
+        "NONE": {
+          "n_true": 0,
+          "n_predicted": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "SCATTER-GATHER": {
+          "n_true": 2,
+          "n_predicted": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
       "said_none_on_a_labelled_case": 2,
       "clean_cases_called_none": 8,
       "by_true_type": {
@@ -622,6 +662,7 @@
         "dominant_match_chance": 0.125,
         "majority_class": "GATHER-SCATTER",
         "majority_class_dominant_accuracy": 0.6667,
+        "majority_class_macro_f1": 0.1333,
         "reading": "any-match must be read against a per-case chance rate, because a large case containing many rings makes it nearly free; dominant-match must be read against always predicting the majority class, which is the real control"
       },
       "n_labelled_cases": 12,
@@ -630,6 +671,52 @@
       "coverage_note": "typology accuracy is computed on the 12 cases whose members touch a named ring in the scored window; 10 productive cases have laundering the simulator did not group into a ring and are excluded rather than scored against NONE",
       "any_match_accuracy": 0.3333,
       "dominant_match_accuracy": 0.1667,
+      "macro_f1": 0.0606,
+      "macro_f1_note": "macro-F1 over the 6 typologies present in truth or in either arm's predictions, across 12 labelled cases; the baseline is scored over the same class set, or the arm predicting fewer classes would win on the denominator. It was added expecting it to favour the agent over a constant majority-class prediction, and it does not: the agent names no minority typology correctly, so the constant baseline wins on macro-F1 as well as on accuracy. At n=12 read either as a direction, not a point estimate",
+      "per_class_f1": {
+        "BIPARTITE": {
+          "n_true": 0,
+          "n_predicted": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "FAN-IN": {
+          "n_true": 1,
+          "n_predicted": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "FAN-OUT": {
+          "n_true": 1,
+          "n_predicted": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "GATHER-SCATTER": {
+          "n_true": 8,
+          "n_predicted": 3,
+          "precision": 0.6667,
+          "recall": 0.25,
+          "f1": 0.3636
+        },
+        "NONE": {
+          "n_true": 0,
+          "n_predicted": 5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "SCATTER-GATHER": {
+          "n_true": 2,
+          "n_predicted": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
       "said_none_on_a_labelled_case": 5,
       "clean_cases_called_none": 15,
       "by_true_type": {

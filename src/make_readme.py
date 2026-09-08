@@ -28,6 +28,11 @@ DEMO_URL = ""
 
 def header(f: Fetch) -> str:
     demo = (f"**[▶ Live demo]({DEMO_URL})** · " if DEMO_URL else "")
+    pc = (f.data.get("single_bank", {}).get("paired_vs_no_graph", {})
+          .get("graph_100pct"))
+    paired_note = (f"[{pc['ci95'][0]:+.4f}, {pc['ci95'][1]:+.4f}], "
+                   f"{(1 - pc['share_of_draws_worse_than_no_graph']) * 100:.1f}% of "
+                   "resamples favouring it" if pc else "(see the ablation section)")
     return f"""# AML Laundering-Network Detection & Triage
 
 {demo}[Build log](docs/NOTES.md) · [Methodology](docs/METHODOLOGY.md)
@@ -42,18 +47,26 @@ transaction monitoring  ->  alert  ->  L1 triage  ->  L2 investigation  ->  SAR 
    [ engine: arm C ]              [ agent: case triage ]
 ```
 
-**Headline, stated honestly.** The engine works: PR-AUC
-{f.num("engine.splits.val.pr_auc")} on validation against
-{f.num("arms.arms.B.val.pr_auc")} for a deliberately strong account-aggregate baseline,
-with precision@100 of {f.pct("engine.splits.val.precision_at_k.100.precision", 0)}. The
-agent's **disposition does not** — its escalate/close decision is statistically
-indistinguishable from the queue's base rate (Fisher exact,
+**Headline, stated honestly — which means with the intervals.**
+
+The engine ranks well: PR-AUC {f.num("engine.splits.val.pr_auc")} on validation with
+precision@100 of {f.pct("engine.splits.val.precision_at_k.100.precision", 0)}, against
+{f.num("arms.arms.B.val.pr_auc")} for a deliberately strong account-aggregate baseline.
+But that **+0.012 lift from graph topology is at the edge of significance, not
+established** — paired 95% CI {paired_note}. It is reported that way throughout rather
+than as a settled number.
+
+The agent's **disposition does not work at all** — its escalate/close decision is
+statistically indistinguishable from the queue's base rate (Fisher exact,
 p={f.num("agent.test_retrieval_on.discrimination.overall.fisher_p_one_sided", 2)}), and an
 earlier configuration that appeared to beat the control by 6.7 points turned out to be
-Simpson's paradox. What the agent does deliver is measured too: complete, grounded,
+Simpson's paradox. What it does deliver is measured too: complete, grounded,
 SAR-structured case notes with
 {f.thousands("agent.test_retrieval_on.case_note.n_with_fabricated_id_in_prose")}
 fabricated identifier across roughly 26,500 words of generated narrative.
+
+Three headline numbers in this project did not survive being asked what a system doing no
+work would score. Finding that out is most of what the repo is for.
 """
 
 
@@ -126,6 +139,36 @@ def engine(f: Fetch) -> str:
     table = "\n".join(rows)
 
     val, test = f("engine.splits.val.pr_auc"), f("engine.splits.test.pr_auc")
+
+    # Arm B and arm C were only ever compared by their marginal CIs, which overlap. The
+    # paired comparison became available as a side effect of B1 persisting per-row scores
+    # for every arm, and it is the correct test: both arms score identical rows.
+    pc = (f.data.get("single_bank", {}).get("paired_vs_no_graph", {})
+          .get("graph_100pct"))
+    if pc:
+        share = 1 - pc["share_of_draws_worse_than_no_graph"]
+        ablation_paired = f"""The arms above were compared by their 95% CIs, which overlap
+— the conservative reading, and the only one available until the visibility experiment
+(see Limitations) began persisting per-row scores for every arm. Both arms score the **same** validation rows, so the correct test is paired,
+and it says something more careful than the table does:
+
+> arm C over arm B: **{pc['delta_vs_no_graph']:+.4f} PR-AUC, 95% CI
+> [{pc['ci95'][0]:+.4f}, {pc['ci95'][1]:+.4f}]** — {share * 100:.1f}% of paired bootstrap
+> resamples favour the graph features, and the two-sided interval just includes zero.
+
+**That is at the edge of conventional significance, not established.** The direction is
+consistent and the effect is where the domain argument predicts it, but on 1,083 validation
+positives this dataset cannot separate a +0.012 PR-AUC difference from zero at 95%. The
+honest claim is "graph topology probably helps, by about this much, and here is the
+interval" — not "graph topology lifts PR-AUC from {f.num("arms.arms.B.val.pr_auc")} to
+{f.num("arms.arms.C.val.pr_auc")}".
+
+Reporting the point estimate alone would repeat exactly the error this project has now
+caught three times: the agent's +6.7-point control lift that was Simpson's paradox, the
+typology accuracy that lost to always guessing the majority class, and the FX materiality
+threshold borrowed from a question it did not answer."""
+    else:
+        ablation_paired = ""
     return f"""
 ## The engine
 
@@ -143,6 +186,10 @@ honest number.
 
 Arm D added node2vec embeddings over the same graph and **did not beat explicit
 topology** across three seeds and two dimensions. It is reported rather than dropped.
+
+#### How solid is that lift? Less than it first looked
+
+{ablation_paired}
 
 ### The test split was scored exactly once
 
@@ -176,57 +223,45 @@ subsets.
 """
 
 
-def single_bank(f: Fetch) -> str:
+def visibility_limitation(f: Fetch) -> str:
+    """B1, compressed to what it can actually support.
+
+    This began as a full section arguing that graph features degrade harmfully under
+    partial visibility. That claim did not survive its own replicate — a second draw of
+    which edges are visible flipped the one conclusive point — so what remains is a
+    finding about the DATASET rather than about the model, and it belongs in Limitations
+    beside the claims it substantiates.
+    """
     if not f.has("single_bank"):
         return ""
     sb = f.data["single_bank"]
     d = sb["why_not_a_single_bank"]
     b070 = d["bank_070"]
-    rows = "\n".join(
-        f"| {r['fraction_visible']:.0%} | {r['pr_auc']:.4f} | "
-        f"{r['lift_over_arm_b']:+.4f} | {(r['share_of_full_lift'] or 0) * 100:.0f}% |"
-        for r in sb["curve"])
-    return f"""
-### How much of the network do the graph features need?
-
-This dataset hands you the complete inter-bank graph. **No real institution has that** — a
-bank sees the transactions it is a party to and nothing between two other banks. The plan
-was to re-run arm C restricted to one bank's visible subgraph and report the drop.
-
-**That experiment is not well posed on this data, and finding out why is the more useful
-result.** There are **{d['n_banks']:,} distinct banks** across 5.08M transactions, with a
-median of **{d['median_accounts_per_bank']} accounts each**; only
-{d['banks_with_1000plus_accounts']} have a thousand or more. Exactly one bank has enough
-validation positives to bootstrap a PR-AUC — bank 070, with
-{d['best_single_bank_val_positives']}; the next best has
-{d['second_best_single_bank_val_positives']}.
-
-And bank 070 is not a bank. It has **{b070['accounts']} accounts carrying
-{b070['transactions']:,} transactions** — {b070['transactions_per_account']:,} per account,
-with **zero** internal transfers. It is a clearing or settlement entity in the generator.
-Run on it anyway, the frozen engine scores PR-AUC {b070['frozen_engine_pr_auc_on_its_slice']}
-(chance, on a 0.139% base rate) with ROC-AUC
-{b070['frozen_engine_roc_auc_on_its_slice']} — *below* chance. That is a fact about fifteen
-hyperactive settlement accounts, not about institutional visibility, and publishing it
-would have been a real number answering no question anyone asked.
-
-So the underlying question is asked in the form the data can support: **arm C's lift comes
-from multi-hop topology — how much of the network must you observe before it appears?**
-The graph is built from a random fraction of training transactions and everything else is
-held identical, evaluated on the whole validation split so the base rate is fixed and
-there are {f.thousands("engine.splits.val.positives")} positives.
-
-Only the graph is degraded, deliberately: a bank does hold its own customers' account
-histories, so account and typology features stay on the full training window. That
-isolates network visibility instead of confounding it with having less data of every kind.
-
-| Graph visible | val PR-AUC | Lift over arm B | Share of full lift |
-|---|---|---|---|
-| none (arm B) | {sb['arm_b_floor']:.4f} | — | — |
-{rows}
-
-{sb['caveat'].capitalize()}.
-"""
+    rep = sb.get("seed_replicates", {}).get("by_fraction", {}).get("graph_025pct")
+    if rep:
+        spread = (f"{rep['pr_auc_min']:.4f}–{rep['pr_auc_max']:.4f} across "
+                  f"{rep['n_seeds']} draws")
+        magnitude = rep["pr_auc_range"]
+    else:
+        spread, magnitude = "0.1421–0.1904 across 2 draws", 0.0483
+    # Wrapped here rather than by `reflow`, which leaves list items alone so as not to
+    # disturb hand-written bullets; this one is built by concatenation and would otherwise
+    # be a single 900-character source line.
+    return textwrap.fill(
+        f"- **Full inter-bank visibility is a synthetic-data luxury, and this dataset "
+        f"cannot quantify what it is worth.** The plan was to re-run the engine on one "
+        f"bank's visible subgraph. There are **{d['n_banks']:,} banks** here with a median "
+        f"of **{d['median_accounts_per_bank']} accounts**, and the only one large enough "
+        f"to test turns out to be a clearing entity — **{b070['accounts']} accounts "
+        f"carrying {b070['transactions']:,} transactions** with zero internal transfers, "
+        f"on whose slice the engine scores below chance. Degrading the graph by a random "
+        f"fraction instead is inconclusive for a different reason: at 25% visibility the "
+        f"PR-AUC spans {spread} depending purely on *which* edges are sampled — a spread "
+        f"of {magnitude:.3f}, several times the graph lift itself. **Which edges you see "
+        f"swamps how many.** Full detail in [docs/NOTES.md](docs/NOTES.md); the numbers "
+        f"are in `results/single_bank.json`.",
+        width=92, subsequent_indent="  ", break_long_words=False,
+        break_on_hyphens=False)
 
 
 def fx(f: Fetch) -> str:
@@ -326,6 +361,7 @@ strictly more information.
 | fabricated identifiers in ~26,500 words of narrative | **{note['n_with_fabricated_id_in_prose']}** ({note['fabricated_prose_rate'] * 100:.1f}% of cases) |
 | typology vs `Patterns.txt`, any-match | {(typ['any_match_accuracy'] or 0) * 100:.1f}% (chance: {(typ['baselines']['any_match_expected_by_chance'] or 0) * 100:.1f}%) |
 | typology, dominant-match | {(typ['dominant_match_accuracy'] or 0) * 100:.1f}% (**majority-class baseline: {(typ['baselines']['majority_class_dominant_accuracy'] or 0) * 100:.1f}%**) |
+| typology, macro-F1 over {len(typ['per_class_f1'])} classes | {typ['macro_f1'] or 0:.2f} (**majority-class baseline: {typ['baselines']['majority_class_macro_f1'] or 0:.2f}**) |
 | cost per case | ${on['cost']['per_alert_usd']:.4f} |
 | median latency | {on['cost']['median_latency_seconds']}s |
 
@@ -349,9 +385,18 @@ chance rate but a badly skewed class distribution: **always predicting
 {typ['baselines']['majority_class']} scores {(typ['baselines']['majority_class_dominant_accuracy'] or 0) * 100:.1f}%**,
 and the agent scores {(typ['dominant_match_accuracy'] or 0) * 100:.1f}%.
 
-So the agent does **not** beat the trivial baseline on typology. At twelve labelled cases
-neither figure is well determined — which is the point. The number is reported with its
-control and its sample size rather than on its own, the same way the disposition was.
+So the agent does **not** beat the trivial baseline on typology. **Macro-F1 was added to
+test whether that verdict was an artifact of the metric** — accuracy averages over cases
+and so rewards the majority class, whereas macro-F1 averages over classes and should
+punish a baseline that never names the other seven. It punishes it, and the agent scores
+lower still: {typ['macro_f1'] or 0:.2f} against {typ['baselines']['majority_class_macro_f1'] or 0:.2f}, because it
+names no minority typology correctly either. Both arms are scored over the same class set,
+since macro-F1 divides by the number of classes averaged over and an arm predicting a
+typology that never occurs would otherwise be penalised on the denominator alone.
+
+At twelve labelled cases none of these figures is well determined — which is the point.
+Each is reported with its control and its sample size rather than on its own, the same way
+the disposition was.
 
 ### Field order in a structured output is generation order
 
@@ -456,6 +501,7 @@ case, {f("agent.test_retrieval_on.cost.median_latency_seconds")}s median latency
 
 
 def closing(f: Fetch) -> str:
+    visibility = visibility_limitation(f)
     return f"""
 ## Regulatory grounding
 
@@ -509,8 +555,7 @@ Stated plainly, because they are the first thing a reviewer should ask about.
 
 - **The data is synthetic.** IBM's generator injects laundering patterns; real laundering
   is not drawn from eight named topologies. Nothing here transfers directly.
-- **Full inter-bank visibility is a synthetic-data luxury**, quantified above rather than
-  disclaimed.
+{visibility}
 - **No entity resolution.** Real AML operates on customers who hold many accounts across
   many institutions. This works at the account level, with only a static account-to-entity
   mapping.
@@ -574,8 +619,17 @@ def reflow(text: str, width: int = 92) -> str:
     out: list[str] = []
     fenced = False
     paragraph: list[str] = []
+    quoted: list[str] = []
+
+    def flush_quote() -> None:
+        if quoted:
+            out.extend("> " + ln for ln in textwrap.wrap(
+                " ".join(quoted), width=width - 2, break_long_words=False,
+                break_on_hyphens=False))
+            quoted.clear()
 
     def flush() -> None:
+        flush_quote()
         if paragraph:
             out.extend(textwrap.wrap(" ".join(paragraph), width=width,
                                      break_long_words=False, break_on_hyphens=False))
@@ -589,8 +643,19 @@ def reflow(text: str, width: int = 92) -> str:
             out.append(line)
         elif fenced:
             out.append(line)
+        elif stripped.startswith(">"):
+            # Blockquotes are prose too, and leaving them at their template line breaks
+            # puts a wrap in the middle of a quoted statistic. Consecutive `>` lines
+            # accumulate and are wrapped as ONE block on the next non-quote line — which
+            # is why only the paragraph buffer is flushed here, not the quote buffer.
+            if paragraph:
+                out.extend(textwrap.wrap(" ".join(paragraph), width=width,
+                                         break_long_words=False,
+                                         break_on_hyphens=False))
+                paragraph.clear()
+            quoted.append(stripped.lstrip("> ").rstrip())
         elif (not stripped
-              or stripped.startswith(("|", "#", ">", "![", "---"))
+              or stripped.startswith(("|", "#", "![", "---"))
               # a bullet needs the space: "* item" is a list, "**Headline**" is bold
               or re.match(r"^([-*+] |\d+\. )", stripped)):
             flush()
@@ -606,7 +671,7 @@ def main() -> int:
     if f.absent:
         print(f"note: missing {', '.join(f.absent)} — those sections will be omitted\n")
 
-    parts = [header(f), problem(f), typologies(), engine(f), single_bank(f), fx(f),
+    parts = [header(f), problem(f), typologies(), engine(f), fx(f),
              agent(f), walkthrough(f), closing(f)]
     OUT.write_text(reflow("\n".join(p.rstrip() + "\n" for p in parts if p.strip())))
     f.write_provenance()

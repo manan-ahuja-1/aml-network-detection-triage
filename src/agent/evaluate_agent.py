@@ -99,6 +99,51 @@ def case_truth(records: list[dict], frame: pd.DataFrame,
     return truth
 
 
+def macro_f1(pairs: list[tuple[str, str]],
+             classes: list[str] | None = None) -> tuple[float | None, dict]:
+    """Macro-F1 over `classes`, defaulting to those appearing in truth or prediction.
+
+    WHY THIS METRIC IS HERE, AND WHAT IT DID NOT DO
+    -----------------------------------------------
+    It was added expecting a disagreement. Dominant-match accuracy is dominated by the
+    majority class, so always predicting GATHER-SCATTER beats the agent on it; macro-F1
+    averages over classes instead of cases, so it should punish a baseline that never
+    names the other seven. It does punish it — and the agent scores lower still, because
+    it gets no minority typology right either AND spends predictions on classes that do
+    not occur. The agent loses to the constant baseline on both metrics. That is the
+    result; the metric did not rescue the number, it corroborated it.
+
+    THE CLASS SET MUST BE SHARED, OR THE COMPARISON IS RIGGED
+    ---------------------------------------------------------
+    Macro-F1 divides by the number of classes averaged over. Scoring each arm on its own
+    present-classes set means an arm that predicts a spurious extra typology enlarges its
+    own denominator and scores worse for it, while a constant baseline gets the smallest
+    denominator available. Measured here that gap was 5 classes against 4 — worth 0.01 of
+    macro-F1, on a difference of the same order. So `classes` is passed in, fixed to the
+    union across truth and every arm compared.
+
+    Averaging over classes PRESENT rather than all eight is still deliberate: a typology
+    that neither occurs nor is ever predicted has an undefined F1, and scoring it zero
+    only divides every arm by the same larger constant.
+    """
+    if classes is None:
+        classes = sorted({t for t, _ in pairs} | {p for _, p in pairs})
+    if not classes:
+        return None, {}
+    per_class = {}
+    for c in classes:
+        tp = sum(1 for t, p in pairs if t == c and p == c)
+        fp = sum(1 for t, p in pairs if t != c and p == c)
+        fn = sum(1 for t, p in pairs if t == c and p != c)
+        prec = tp / (tp + fp) if tp + fp else 0.0
+        rec = tp / (tp + fn) if tp + fn else 0.0
+        f1 = 2 * prec * rec / (prec + rec) if prec + rec else 0.0
+        per_class[c] = {"n_true": tp + fn, "n_predicted": tp + fp,
+                        "precision": round(prec, 4), "recall": round(rec, 4),
+                        "f1": round(f1, 4)}
+    return sum(v["f1"] for v in per_class.values()) / len(classes), per_class
+
+
 def typology_scores(records: list[dict], truth: dict[str, dict]) -> dict:
     """Accuracy on the labelled cases, plus the confusion matrix that explains it."""
     labelled = [r for r in records if truth[r["unit_id"]]["bucket"] == "labelled"]
@@ -148,6 +193,16 @@ def typology_scores(records: list[dict], truth: dict[str, dict]) -> dict:
     chance_any = (sum(len(truth[r["unit_id"]]["types"]) / len(config.TYPOLOGIES[:-1])
                       for r in labelled) / n_lab) if n_lab else None
 
+    pairs = [(truth[r["unit_id"]]["dominant"], r["result"]["pattern_classification"])
+             for r in labelled]
+    baseline_pairs = [(t, majority_label) for t, _ in pairs] if majority_label else []
+    # The baseline predicts only `majority_label`, which is by construction one of the
+    # truth labels, so the union below already covers both arms.
+    shared_classes = sorted({t for t, _ in pairs} | {p for _, p in pairs})
+    macro, per_class_f1 = macro_f1(pairs, shared_classes)
+    majority_macro = (macro_f1(baseline_pairs, shared_classes)[0]
+                      if baseline_pairs else None)
+
     return {
         "baselines": {
             "any_match_expected_by_chance": (round(chance_any, 4) if chance_any
@@ -156,6 +211,8 @@ def typology_scores(records: list[dict], truth: dict[str, dict]) -> dict:
             "majority_class": majority_label,
             "majority_class_dominant_accuracy": (round(majority_acc, 4) if majority_acc
                                                  else None),
+            "majority_class_macro_f1": (round(majority_macro, 4)
+                                        if majority_macro is not None else None),
             "reading": (
                 "any-match must be read against a per-case chance rate, because a large "
                 "case containing many rings makes it nearly free; dominant-match must be "
@@ -172,6 +229,17 @@ def typology_scores(records: list[dict], truth: dict[str, dict]) -> dict:
             "than scored against NONE"),
         "any_match_accuracy": round(sum(any_hit) / n_lab, 4) if n_lab else None,
         "dominant_match_accuracy": round(sum(dom_hit) / n_lab, 4) if n_lab else None,
+        "macro_f1": round(macro, 4) if macro is not None else None,
+        "macro_f1_note": (
+            f"macro-F1 over the {len(per_class_f1)} typologies present in truth or in "
+            f"either arm's predictions, across {n_lab} labelled cases; the baseline is "
+            "scored over the same class set, or the arm predicting fewer classes would "
+            "win on the denominator. It was added expecting it to favour the agent over "
+            "a constant majority-class prediction, and it does not: the agent names no "
+            "minority typology correctly, so the constant baseline wins on macro-F1 as "
+            f"well as on accuracy. At n={n_lab} read either as a direction, not a point "
+            "estimate"),
+        "per_class_f1": per_class_f1,
         "said_none_on_a_labelled_case": sum(
             1 for r in labelled if r["result"]["pattern_classification"] == "NONE"),
         "clean_cases_called_none": sum(

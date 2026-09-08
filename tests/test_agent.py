@@ -537,3 +537,45 @@ def test_the_decision_is_generated_after_the_reasoning():
     assert order.index("case_note") < order.index("disposition")
     assert order.index("pattern_classification") < order.index("disposition")
     assert order[-1] == "confidence"
+
+
+# --- typology macro-F1 -----------------------------------------------------------------
+# Macro-F1 was added last, to check whether "the agent loses to always predicting the
+# majority class" was an artifact of averaging over cases. It is not. These two tests pin
+# the trap that made the first version of the number wrong.
+
+from agent import evaluate_agent as ev  # noqa: E402
+import json  # noqa: E402
+
+
+def test_macro_f1_penalises_an_arm_for_predicting_a_class_that_never_occurs():
+    """Macro-F1 divides by the number of classes averaged over. Score each arm on its own
+    present-classes set and an arm that emits one spurious typology enlarges its own
+    denominator — it is marked down for a class nobody could have got right. That is why
+    `macro_f1` takes the class set as an argument."""
+    truth_and_pred = [("A", "A"), ("A", "A"), ("B", "NONE")]
+    solo, _ = ev.macro_f1(truth_and_pred)                    # scored over {A, B, NONE}
+    shared, _ = ev.macro_f1(truth_and_pred, ["A", "B"])      # scored over {A, B}
+    assert solo < shared, "the spurious class must cost something when it is counted"
+    # and the size of that penalty is purely the denominator, nothing about the answers
+    assert round(solo * 3, 6) == round(shared * 2, 6)
+
+
+def test_reported_typology_metrics_travel_with_their_control_and_their_n():
+    """Twelve labelled cases. Any of these numbers alone is misleading, so none of them
+    is allowed to appear without the baseline it must be read against and the sample size
+    that says how far to trust it."""
+    path = config.RESULTS / "agent.json"
+    if not path.exists():
+        pytest.skip("results not generated yet")
+    typ = json.loads(path.read_text())["test_retrieval_on"]["typology"]
+    for metric, control in (("dominant_match_accuracy", "majority_class_dominant_accuracy"),
+                            ("macro_f1", "majority_class_macro_f1"),
+                            ("any_match_accuracy", "any_match_expected_by_chance")):
+        assert typ.get(metric) is not None, f"{metric} missing"
+        assert typ["baselines"].get(control) is not None, f"{metric} has no control"
+    assert typ["n_labelled_cases"] > 0
+    assert str(typ["n_labelled_cases"]) in typ["macro_f1_note"], \
+        "macro-F1 must carry its sample size, which is the whole caveat"
+    # the two arms must have been scored over one class set, not two
+    assert len(typ["per_class_f1"]) >= 1

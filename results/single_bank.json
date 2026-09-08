@@ -1,0 +1,516 @@
+{
+  "question": "arm C's lift over arm B comes from multi-hop topology; how much of the network has to be observed before that lift appears?",
+  "design": "only the graph is degraded \u2014 account and typology features stay on the full training window, because an institution does hold its own customers' histories. Evaluated on the complete validation split so the base rate is fixed and there are 1,083 positives.",
+  "why_not_a_single_bank": {
+    "n_banks": 30528,
+    "median_accounts_per_bank": 4,
+    "banks_with_1000plus_accounts": 24,
+    "best_single_bank_val_positives": 145,
+    "second_best_single_bank_val_positives": 34,
+    "bank_070": {
+      "accounts": 15,
+      "transactions": 452751,
+      "transactions_per_account": 30183,
+      "internal_transfer_share": 0.0,
+      "frozen_engine_pr_auc_on_its_slice": 0.0015,
+      "frozen_engine_roc_auc_on_its_slice": 0.4879,
+      "verdict": "a clearing or settlement entity, not an institution; the single-bank experiment was abandoned on this evidence"
+    }
+  },
+  "arm_b_floor": 0.181477,
+  "arm_c_ceiling": 0.193751,
+  "full_lift": 0.012274,
+  "curve": [
+    {
+      "fraction_visible": 1.0,
+      "pr_auc": 0.193751,
+      "lift_over_arm_b": 0.012274,
+      "share_of_full_lift": 1.0
+    },
+    {
+      "fraction_visible": 0.5,
+      "pr_auc": 0.169118,
+      "lift_over_arm_b": -0.012359,
+      "share_of_full_lift": -1.007
+    },
+    {
+      "fraction_visible": 0.25,
+      "pr_auc": 0.14215,
+      "lift_over_arm_b": -0.039327,
+      "share_of_full_lift": -3.2042
+    },
+    {
+      "fraction_visible": 0.1,
+      "pr_auc": 0.176418,
+      "lift_over_arm_b": -0.005059,
+      "share_of_full_lift": -0.4122
+    }
+  ],
+  "arms": {
+    "graph_none": {
+      "n": 1015300,
+      "positives": 1083,
+      "base_rate": 0.0010666797990741652,
+      "pr_auc": 0.18147700346147164,
+      "roc_auc": 0.9366434892820371,
+      "precision_at_k": {
+        "50": {
+          "k": 50,
+          "hits": 44,
+          "precision": 0.88,
+          "recall": 0.040627885503231764
+        },
+        "100": {
+          "k": 100,
+          "hits": 88,
+          "precision": 0.88,
+          "recall": 0.08125577100646353
+        },
+        "500": {
+          "k": 500,
+          "hits": 178,
+          "precision": 0.356,
+          "recall": 0.16435826408125578
+        }
+      },
+      "alerts_at_80_recall": {
+        "target_recall": 0.8,
+        "achievable": true,
+        "threshold": 5.116751740426602e-07,
+        "precision": 0.009782682282851533,
+        "recall": 0.8005540166204986,
+        "alerts_to_review": 88626
+      },
+      "pr_auc_ci95": [
+        0.158789,
+        0.206265
+      ],
+      "note": "arm B \u2014 no graph features at all",
+      "best_iteration": 1961
+    },
+    "graph_100pct": {
+      "n": 1015300,
+      "positives": 1083,
+      "base_rate": 0.0010666797990741652,
+      "pr_auc": 0.19375080985793453,
+      "roc_auc": 0.8904206714014812,
+      "precision_at_k": {
+        "50": {
+          "k": 50,
+          "hits": 47,
+          "precision": 0.94,
+          "recall": 0.04339796860572484
+        },
+        "100": {
+          "k": 100,
+          "hits": 88,
+          "precision": 0.88,
+          "recall": 0.08125577100646353
+        },
+        "500": {
+          "k": 500,
+          "hits": 198,
+          "precision": 0.396,
+          "recall": 0.18282548476454294
+        }
+      },
+      "alerts_at_80_recall": {
+        "target_recall": 0.8,
+        "achievable": true,
+        "threshold": 9.561707467101464e-08,
+        "precision": 0.005831021302037499,
+        "recall": 0.801477377654663,
+        "alerts_to_review": 148859
+      },
+      "pr_auc_ci95": [
+        0.169978,
+        0.218976
+      ],
+      "note": "arm C, graph built from 100% of training transactions",
+      "best_iteration": 2064
+    },
+    "graph_050pct": {
+      "n": 1015300,
+      "positives": 1083,
+      "base_rate": 0.0010666797990741652,
+      "pr_auc": 0.16911762203431052,
+      "roc_auc": 0.9477676155111096,
+      "precision_at_k": {
+        "50": {
+          "k": 50,
+          "hits": 34,
+          "precision": 0.68,
+          "recall": 0.03139427516158818
+        },
+        "100": {
+          "k": 100,
+          "hits": 76,
+          "precision": 0.76,
+          "recall": 0.07017543859649122
+        },
+        "500": {
+          "k": 500,
+          "hits": 194,
+          "precision": 0.388,
+          "recall": 0.1791320406278855
+        }
+      },
+      "alerts_at_80_recall": {
+        "target_recall": 0.8,
+        "achievable": true,
+        "threshold": 0.00023546014571096442,
+        "precision": 0.00836017202476231,
+        "recall": 0.8005540166204986,
+        "alerts_to_review": 103706
+      },
+      "pr_auc_ci95": [
+        0.147801,
+        0.196847
+      ],
+      "note": "arm C, graph built from 50% of training transactions",
+      "best_iteration": 381
+    },
+    "graph_025pct": {
+      "n": 1015300,
+      "positives": 1083,
+      "base_rate": 0.0010666797990741652,
+      "pr_auc": 0.142149868883715,
+      "roc_auc": 0.9304141478586015,
+      "precision_at_k": {
+        "50": {
+          "k": 50,
+          "hits": 45,
+          "precision": 0.9,
+          "recall": 0.04155124653739612
+        },
+        "100": {
+          "k": 100,
+          "hits": 73,
+          "precision": 0.73,
+          "recall": 0.06740535549399815
+        },
+        "500": {
+          "k": 500,
+          "hits": 150,
+          "precision": 0.3,
+          "recall": 0.13850415512465375
+        }
+      },
+      "alerts_at_80_recall": {
+        "target_recall": 0.8,
+        "achievable": true,
+        "threshold": 0.0003369549270016921,
+        "precision": 0.007146091466677644,
+        "recall": 0.801477377654663,
+        "alerts_to_review": 121465
+      },
+      "pr_auc_ci95": [
+        0.121182,
+        0.164957
+      ],
+      "note": "arm C, graph built from 25% of training transactions",
+      "best_iteration": 196
+    },
+    "graph_010pct": {
+      "n": 1015300,
+      "positives": 1083,
+      "base_rate": 0.0010666797990741652,
+      "pr_auc": 0.1764179377372021,
+      "roc_auc": 0.9322196380230316,
+      "precision_at_k": {
+        "50": {
+          "k": 50,
+          "hits": 42,
+          "precision": 0.84,
+          "recall": 0.038781163434903045
+        },
+        "100": {
+          "k": 100,
+          "hits": 86,
+          "precision": 0.86,
+          "recall": 0.07940904893813482
+        },
+        "500": {
+          "k": 500,
+          "hits": 188,
+          "precision": 0.376,
+          "recall": 0.17359187442289936
+        }
+      },
+      "alerts_at_80_recall": {
+        "target_recall": 0.8,
+        "achievable": true,
+        "threshold": 8.743457558528036e-07,
+        "precision": 0.009775182086725145,
+        "recall": 0.8005540166204986,
+        "alerts_to_review": 88694
+      },
+      "pr_auc_ci95": [
+        0.15354,
+        0.202181
+      ],
+      "note": "arm C, graph built from 10% of training transactions",
+      "best_iteration": 1738
+    }
+  },
+  "graph_sizes": {
+    "graph_100pct": {
+      "nodes": 406998,
+      "edges": 569215,
+      "edges_per_node": 1.399
+    },
+    "graph_050pct": {
+      "nodes": 330494,
+      "edges": 423413,
+      "edges_per_node": 1.281
+    },
+    "graph_025pct": {
+      "nodes": 273007,
+      "edges": 306579,
+      "edges_per_node": 1.123
+    },
+    "graph_010pct": {
+      "nodes": 198838,
+      "edges": 175880,
+      "edges_per_node": 0.885
+    }
+  },
+  "caveat": "random edge removal thins the graph uniformly; a real institution's view is structured \u2014 dense locally, empty globally \u2014 so this measures how much topology the features need, not the shape of one bank's blind spot",
+  "paired_vs_no_graph": {
+    "graph_100pct": {
+      "delta_vs_no_graph": 0.012274,
+      "ci95": [
+        -0.002468,
+        0.026756
+      ],
+      "excludes_zero": false,
+      "share_of_draws_worse_than_no_graph": 0.047
+    },
+    "graph_050pct": {
+      "delta_vs_no_graph": -0.012359,
+      "ci95": [
+        -0.030465,
+        0.009727
+      ],
+      "excludes_zero": false,
+      "share_of_draws_worse_than_no_graph": 0.855
+    },
+    "graph_025pct": {
+      "delta_vs_no_graph": -0.039327,
+      "ci95": [
+        -0.05796,
+        -0.020254
+      ],
+      "excludes_zero": true,
+      "share_of_draws_worse_than_no_graph": 1.0
+    },
+    "graph_010pct": {
+      "delta_vs_no_graph": -0.005059,
+      "ci95": [
+        -0.021423,
+        0.011327
+      ],
+      "excludes_zero": false,
+      "share_of_draws_worse_than_no_graph": 0.713
+    }
+  },
+  "paired_note": "each arm is scored on identical rows, so the marginal CIs above overlap far more than the paired differences do; the paired test is the one to read",
+  "seed_replicates": {
+    "note": "each seed is a different draw of WHICH EDGES ARE VISIBLE; LightGBM is deterministic given its data, so all spread here is the visibility draw. Arm B and the 100% arm are not replicated because neither depends on the sampling seed.",
+    "claim_limits": "three seeds supports a mean, a range and a count of replicates separating from the floor \u2014 not a significance test on n=3",
+    "by_fraction": {
+      "graph_050pct": {
+        "n_seeds": 3,
+        "seeds": [
+          42,
+          2024,
+          7
+        ],
+        "pr_auc_mean": 0.151833,
+        "pr_auc_min": 0.12096,
+        "pr_auc_max": 0.169118,
+        "pr_auc_range": 0.048158,
+        "delta_mean": -0.029644,
+        "n_separated_from_floor": 1,
+        "all_below_floor": true,
+        "best_iterations": [
+          381,
+          237,
+          84
+        ],
+        "per_seed": [
+          {
+            "seed": 42,
+            "pr_auc": 0.16911762203431052,
+            "best_iteration": 381,
+            "paired": {
+              "delta_vs_no_graph": -0.012359,
+              "ci95": [
+                -0.030465,
+                0.009727
+              ],
+              "excludes_zero": false,
+              "share_of_draws_worse_than_no_graph": 0.855
+            }
+          },
+          {
+            "seed": 2024,
+            "pr_auc": 0.1654204811192734,
+            "best_iteration": 237,
+            "paired": {
+              "delta_vs_no_graph": -0.016057,
+              "ci95": [
+                -0.03545,
+                0.004035
+              ],
+              "excludes_zero": false,
+              "share_of_draws_worse_than_no_graph": 0.9435
+            }
+          },
+          {
+            "seed": 7,
+            "pr_auc": 0.12095999443038562,
+            "best_iteration": 84,
+            "paired": {
+              "delta_vs_no_graph": -0.060517,
+              "ci95": [
+                -0.07952,
+                -0.039439
+              ],
+              "excludes_zero": true,
+              "share_of_draws_worse_than_no_graph": 1.0
+            }
+          }
+        ]
+      },
+      "graph_025pct": {
+        "n_seeds": 3,
+        "seeds": [
+          42,
+          2024,
+          7
+        ],
+        "pr_auc_mean": 0.169734,
+        "pr_auc_min": 0.14215,
+        "pr_auc_max": 0.190379,
+        "pr_auc_range": 0.048229,
+        "delta_mean": -0.011743,
+        "n_separated_from_floor": 1,
+        "all_below_floor": false,
+        "best_iterations": [
+          196,
+          2473,
+          2066
+        ],
+        "per_seed": [
+          {
+            "seed": 42,
+            "pr_auc": 0.142149868883715,
+            "best_iteration": 196,
+            "paired": {
+              "delta_vs_no_graph": -0.039327,
+              "ci95": [
+                -0.05796,
+                -0.020254
+              ],
+              "excludes_zero": true,
+              "share_of_draws_worse_than_no_graph": 1.0
+            }
+          },
+          {
+            "seed": 2024,
+            "pr_auc": 0.17667238751755224,
+            "best_iteration": 2473,
+            "paired": {
+              "delta_vs_no_graph": -0.004805,
+              "ci95": [
+                -0.020123,
+                0.010578
+              ],
+              "excludes_zero": false,
+              "share_of_draws_worse_than_no_graph": 0.718
+            }
+          },
+          {
+            "seed": 7,
+            "pr_auc": 0.19037889217384557,
+            "best_iteration": 2066,
+            "paired": {
+              "delta_vs_no_graph": 0.008902,
+              "ci95": [
+                -0.006379,
+                0.024024
+              ],
+              "excludes_zero": false,
+              "share_of_draws_worse_than_no_graph": 0.121
+            }
+          }
+        ]
+      },
+      "graph_010pct": {
+        "n_seeds": 3,
+        "seeds": [
+          42,
+          2024,
+          7
+        ],
+        "pr_auc_mean": 0.171332,
+        "pr_auc_min": 0.164047,
+        "pr_auc_max": 0.176418,
+        "pr_auc_range": 0.012371,
+        "delta_mean": -0.010145,
+        "n_separated_from_floor": 1,
+        "all_below_floor": true,
+        "best_iterations": [
+          1738,
+          2433,
+          2484
+        ],
+        "per_seed": [
+          {
+            "seed": 42,
+            "pr_auc": 0.1764179377372021,
+            "best_iteration": 1738,
+            "paired": {
+              "delta_vs_no_graph": -0.005059,
+              "ci95": [
+                -0.021423,
+                0.011327
+              ],
+              "excludes_zero": false,
+              "share_of_draws_worse_than_no_graph": 0.713
+            }
+          },
+          {
+            "seed": 2024,
+            "pr_auc": 0.17353032675207233,
+            "best_iteration": 2433,
+            "paired": {
+              "delta_vs_no_graph": -0.007947,
+              "ci95": [
+                -0.023341,
+                0.007809
+              ],
+              "excludes_zero": false,
+              "share_of_draws_worse_than_no_graph": 0.8355
+            }
+          },
+          {
+            "seed": 7,
+            "pr_auc": 0.16404679366938155,
+            "best_iteration": 2484,
+            "paired": {
+              "delta_vs_no_graph": -0.01743,
+              "ci95": [
+                -0.031369,
+                -0.002018
+              ],
+              "excludes_zero": true,
+              "share_of_draws_worse_than_no_graph": 0.987
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -19,10 +19,23 @@ That property is load-bearing and checked:
 make demo                      # runs it locally on http://localhost:8501
 
 # prove it is self-contained — rename away the two gitignored directories it must not need
-mv data data.off && mv models models.off
+mv data _data_off && mv models _models_off
 make demo                      # must still render every tab
-mv data.off data && mv models.off models
+
+# RESTORE CAREFULLY. Importing the app runs config.py, which recreates data/ and models/
+# as empty directories. So `mv _data_off data` does NOT restore — it moves the real
+# directory INSIDE the empty one, leaving data/_data_off/processed/. Nothing errors; the
+# next `make test` just skips 43 tests with "run `make data` first" and passes.
+# rmdir removes the shells only if they are genuinely empty, and refuses loudly if not.
+rmdir data/chroma data/processed data/raw data models
+mv _data_off data && mv _models_off models
+
+ls data/processed | wc -l      # sanity: expect ~49 entries, not 0
 ```
+
+**That restore bug is why this block is written out rather than left to memory** — the
+failure is silent in both directions, and a test suite that skips is a test suite that
+passes.
 
 `app/requirements.txt` is deliberately **not** the project's `requirements.txt`. It pins
 only `streamlit`, `pandas`, `numpy` and `pyarrow`, because the heavy imports in the
@@ -40,8 +53,11 @@ Run all four. The first two are the ones that matter.
 **1. No secret has ever been committed — not just isn't now.**
 
 ```bash
-git log --all --full-history -- .env .env.* credentials.json token.json
-# expect: no output
+git log --all --full-history -- .env '.env.*' credentials.json token.json ':(exclude).env.example'
+# expect: no output.
+# The exclude matters: `.env.*` matches `.env.example`, which IS committed on purpose (the
+# template, with every value blank). Without it this check reports a hit on a clean repo —
+# and a security check that cries wolf is one you learn to click past.
 
 git grep -nI -E 'sk-ant-|ANTHROPIC_API_KEY *= *.+|KAGGLE_KEY *= *.+' $(git rev-list --all) -- \
   ':!docs/*' ':!*.md' | head

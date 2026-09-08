@@ -179,43 +179,29 @@ with tab_engine:
         if fig:
             st.image(str(fig), width='stretch')
 
-    st.subheader("How much of the network do the graph features need?")
-    if not SINGLE_BANK:
-        missing("single_bank.json")
-    else:
-        sb = SINGLE_BANK
-        d = sb["why_not_a_single_bank"]
+    if SINGLE_BANK:
+        d = SINGLE_BANK["why_not_a_single_bank"]
         b070 = d["bank_070"]
-        st.markdown(f"""
-This dataset hands you the complete inter-bank graph. No real institution has that. The
-plan was to re-run arm C on one bank's visible subgraph — **and that experiment is not
-well posed on this data.** There are **{d['n_banks']:,} banks** with a median of
-**{d['median_accounts_per_bank']} accounts each**; only one has enough validation
-positives to bootstrap a PR-AUC, and it turns out to have **{b070['accounts']} accounts
-carrying {b070['transactions']:,} transactions** with zero internal transfers — a
-clearing entity, not a bank.
+        rep = (SINGLE_BANK.get("seed_replicates", {})
+               .get("by_fraction", {}).get("graph_025pct"))
+        spread = (f"{rep['pr_auc_min']:.4f}–{rep['pr_auc_max']:.4f} across "
+                  f"{rep['n_seeds']} draws" if rep else "0.1421–0.1904 across 2 draws")
+        with st.expander("What a real bank would see — and why this data cannot say"):
+            st.markdown(f"""
+This dataset hands you the complete inter-bank graph; no institution has that. The plan
+was to re-run the engine on one bank's visible subgraph, and **this data cannot support
+that experiment.**
 
-So the question is asked in the form the data supports: arm C's lift comes from
-multi-hop topology, so **how much of the network must you observe before it appears?**
-Only the graph is degraded — a bank does hold its own customers' histories — and every
-row is scored on the whole validation split.
+There are **{d['n_banks']:,} banks** with a median of **{d['median_accounts_per_bank']}
+accounts**, and the only one large enough to test is a clearing entity —
+**{b070['accounts']} accounts carrying {b070['transactions']:,} transactions** with zero
+internal transfers, on whose slice the engine scores *below chance*.
+
+Degrading the graph by a random fraction instead is inconclusive for a different reason:
+at 25% visibility PR-AUC spans **{spread}** depending only on *which* edges are sampled —
+several times the graph lift itself. **Which edges you see swamps how many.** The full
+account is in `docs/NOTES.md`; the numbers are in `results/single_bank.json`.
 """)
-        curve = pd.DataFrame(sb["curve"])
-        curve["fraction_visible"] = curve["fraction_visible"].map(lambda x: f"{x:.0%}")
-        curve["share_of_full_lift"] = curve["share_of_full_lift"].map(
-            lambda x: f"{(x or 0) * 100:.0f}%")
-        st.dataframe(
-            curve.rename(columns={"fraction_visible": "graph visible",
-                                  "pr_auc": "val PR-AUC",
-                                  "lift_over_arm_b": "lift over arm B",
-                                  "share_of_full_lift": "share of full lift"})
-                 .style.format({"val PR-AUC": "{:.4f}", "lift over arm B": "{:+.4f}"}),
-            width='stretch', hide_index=True)
-        c1, c2 = st.columns(2)
-        c1.metric("arm B floor (no graph)", f"{sb['arm_b_floor']:.4f}")
-        c2.metric("arm C ceiling (full graph)", f"{sb['arm_c_ceiling']:.4f}",
-                  delta=f"{sb['full_lift']:+.4f}")
-        st.caption(sb["caveat"].capitalize() + ".")
 
     if FX:
         with st.expander("Currency normalisation — the one unsourced number, resolved"):

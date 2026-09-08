@@ -1,0 +1,176 @@
+{
+  "seed": 2024,
+  "arms": {
+    "graph_050pct": {
+      "n": 1015300,
+      "positives": 1083,
+      "base_rate": 0.0010666797990741652,
+      "pr_auc": 0.1654204811192734,
+      "roc_auc": 0.8979681933056535,
+      "precision_at_k": {
+        "50": {
+          "k": 50,
+          "hits": 46,
+          "precision": 0.92,
+          "recall": 0.04247460757156048
+        },
+        "100": {
+          "k": 100,
+          "hits": 76,
+          "precision": 0.76,
+          "recall": 0.07017543859649122
+        },
+        "500": {
+          "k": 500,
+          "hits": 183,
+          "precision": 0.366,
+          "recall": 0.16897506925207756
+        }
+      },
+      "alerts_at_80_recall": {
+        "target_recall": 0.8,
+        "achievable": true,
+        "threshold": 0.00016060732059560326,
+        "precision": 0.006889593088334989,
+        "recall": 0.8070175438596491,
+        "alerts_to_review": 126858
+      },
+      "pr_auc_ci95": [
+        0.142667,
+        0.189451
+      ],
+      "best_iteration": 237
+    },
+    "graph_025pct": {
+      "n": 1015300,
+      "positives": 1083,
+      "base_rate": 0.0010666797990741652,
+      "pr_auc": 0.17667238751755224,
+      "roc_auc": 0.9239394179305537,
+      "precision_at_k": {
+        "50": {
+          "k": 50,
+          "hits": 43,
+          "precision": 0.86,
+          "recall": 0.03970452446906741
+        },
+        "100": {
+          "k": 100,
+          "hits": 80,
+          "precision": 0.8,
+          "recall": 0.07386888273314866
+        },
+        "500": {
+          "k": 500,
+          "hits": 195,
+          "precision": 0.39,
+          "recall": 0.18005540166204986
+        }
+      },
+      "alerts_at_80_recall": {
+        "target_recall": 0.8,
+        "achievable": true,
+        "threshold": 8.986421979660029e-08,
+        "precision": 0.00884729988979142,
+        "recall": 0.8005540166204986,
+        "alerts_to_review": 97996
+      },
+      "pr_auc_ci95": [
+        0.153298,
+        0.202754
+      ],
+      "best_iteration": 2473
+    },
+    "graph_010pct": {
+      "n": 1015300,
+      "positives": 1083,
+      "base_rate": 0.0010666797990741652,
+      "pr_auc": 0.17353032675207233,
+      "roc_auc": 0.9397855098496806,
+      "precision_at_k": {
+        "50": {
+          "k": 50,
+          "hits": 44,
+          "precision": 0.88,
+          "recall": 0.040627885503231764
+        },
+        "100": {
+          "k": 100,
+          "hits": 81,
+          "precision": 0.81,
+          "recall": 0.07479224376731301
+        },
+        "500": {
+          "k": 500,
+          "hits": 180,
+          "precision": 0.36,
+          "recall": 0.16620498614958448
+        }
+      },
+      "alerts_at_80_recall": {
+        "target_recall": 0.8,
+        "achievable": true,
+        "threshold": 2.093450545976478e-07,
+        "precision": 0.011762790508364198,
+        "recall": 0.8005540166204986,
+        "alerts_to_review": 73707
+      },
+      "pr_auc_ci95": [
+        0.150884,
+        0.199211
+      ],
+      "best_iteration": 2433
+    }
+  },
+  "graph_sizes": {
+    "graph_050pct": {
+      "nodes": 330663,
+      "edges": 423737,
+      "edges_per_node": 1.281
+    },
+    "graph_025pct": {
+      "nodes": 273221,
+      "edges": 306486,
+      "edges_per_node": 1.122
+    },
+    "graph_010pct": {
+      "nodes": 198955,
+      "edges": 175853,
+      "edges_per_node": 0.884
+    }
+  },
+  "paired_vs_no_graph": {
+    "graph_050pct": {
+      "delta_vs_no_graph": -0.016057,
+      "ci95": [
+        -0.03545,
+        0.004035
+      ],
+      "excludes_zero": false,
+      "share_of_draws_worse_than_no_graph": 0.9435
+    },
+    "graph_025pct": {
+      "delta_vs_no_graph": -0.004805,
+      "ci95": [
+        -0.020123,
+        0.010578
+      ],
+      "excludes_zero": false,
+      "share_of_draws_worse_than_no_graph": 0.718
+    },
+    "graph_010pct": {
+      "delta_vs_no_graph": -0.007947,
+      "ci95": [
+        -0.023341,
+        0.007809
+      ],
+      "excludes_zero": false,
+      "share_of_draws_worse_than_no_graph": 0.8355
+    }
+  },
+  "fractions": [
+    0.5,
+    0.25,
+    0.1
+  ]
+}

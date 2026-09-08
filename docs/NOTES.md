@@ -1462,4 +1462,150 @@ number without a control had fooled it once already.
 `typology_scores` now emits `baselines` unconditionally, and the renderer prints the
 control beside every accuracy.
 
-**Next:** B1, then the README generated from `results/*.json` and the demo.
+## The engine's own headline needed the same correction
+
+B1 needed a paired bootstrap, and persisting per-row scores for every arm made one more
+comparison free — the one the project had been quoting since Day 2.
+
+Arm B (0.1815) and arm C (0.1938) had only ever been compared by marginal 95% CIs, which
+overlap: [0.1588, 0.2063] against [0.1700, 0.2190]. That is the conservative test, and it
+was the only one available while nothing kept score vectors for two arms at once. Both arms
+score the same 1,015,300 validation rows, so the right question is the difference:
+
+> **+0.0123 PR-AUC, 95% CI [−0.0025, +0.0268]** — 95.3% of paired resamples favour arm C,
+> and the two-sided interval just includes zero.
+
+Pairing tightens the estimate considerably and it still does not clear the bar. **The graph
+lift is at the edge of significance, not established.** On 1,083 validation positives this
+data cannot separate +0.012 from zero at 95%.
+
+The README now reports the interval everywhere the lift appears, including the opening
+paragraph. Three things do NOT change: arm C is still the selected engine (choosing on a
+point estimate is correct when a choice has to be made — the correction is to the
+*reporting*), arm D is still rejected (it lost to arm C across three seeds, which is
+independent of this), and the decision to build arm B hard to beat is vindicated rather
+than undermined. A weaker baseline would have handed me a large, comfortable, dishonest
+number.
+
+That is the third headline in this project to fail its own control, after the agent's
++6.7-point lift and the typology accuracy. There is a pattern, and it is not that the
+measurements keep being wrong — it is that a point estimate quoted without the thing it
+should be compared against reads as a result when it is not one yet.
+
+## B1 — the experiment I could not run, and the one that did not replicate
+
+The build plan asked for arm C re-run on a single bank's visible subgraph. **That experiment
+is not well posed on this dataset**, and establishing why took longer than running it would
+have.
+
+- **30,528 distinct banks** across 5.08M transactions, median **4 accounts each**; only 24
+have a thousand or more.
+- Only one has enough validation positives to bootstrap a PR-AUC — bank 070, with 145. The
+next best has 34.
+- **And bank 070 is not a bank.** 15 accounts carrying 452,751 transactions — 30,183 each —
+with **zero** internal transfers. A clearing or settlement entity. Every genuine bank looks
+like bank 012: 2,639 accounts at ~38 transactions each, 6.5% internal.
+
+I ran it on 070 before checking any of that and got a clean-looking table: the frozen engine
+at PR-AUC 0.0015, ROC-AUC 0.4879 — *below chance* — on its slice. My first instinct was an
+indexing bug. It was not; both routes to the subset agreed and full-val reproduced 0.1938
+exactly. The number was real and meant nothing, which is worse than a bug, because a bug
+announces itself.
+
+**I picked the subject on one criterion — most validation positives — which is exactly the
+criterion that selects an outlier.** In a dataset of 30,528 banks with a median of 4
+accounts, the only entity with enough events to measure is by construction the one unlike
+the others. Two minutes describing the candidate before running anything would have saved
+the detour.
+
+## The replacement question, and the answer I published too early
+
+Arm C's lift comes from multi-hop topology, so: how much of the network must you observe
+before it appears? Degrade only the graph — account and typology features stay on the full
+training window, because an institution does hold its own customers' histories — and score
+every arm on the whole validation split.
+
+| Graph visible | val PR-AUC | 95% CI | best iter | paired Δ vs no graph |
+|---|---|---|---|---|
+| none — arm B | 0.1815 | [0.1588, 0.2063] | 1961 | — |
+| 100% | 0.1938 | [0.1700, 0.2190] | 2064 | +0.0123 [-0.0025, +0.0268] |
+| 50% | 0.1691 | [0.1478, 0.1968] | 381 | -0.0124 [-0.0305, +0.0097] |
+| 25% | 0.1421 | [0.1212, 0.1650] | 196 | -0.0393 [-0.0580, -0.0203] |
+| 10% | 0.1764 | [0.1535, 0.2022] | 1738 | -0.0051 [-0.0214, +0.0113] |
+
+I wrote this up as a finding: graph features do not degrade gracefully, a partial graph is
+worse than none, and the early-stopping collapse at 50% and 25% shows the model latching
+onto corrupted topology. It was wrong twice over.
+
+## The replicate that killed it
+
+Each point above is **one draw** of which edges are visible. Re-running the partial
+fractions under seeds 42 / 2024 / 7 — varying only the subsample, since LightGBM is
+deterministic given its data:
+
+| Graph visible | PR-AUC per seed | range | best iteration per seed | separated from floor |
+|---|---|---|---|---|
+| 50% | 0.1691 / 0.1654 / 0.1210 | 0.0482 | 381 / 237 / 84 | 1 of 3 |
+| 25% | 0.1421 / 0.1767 / 0.1904 | 0.0482 | 196 / 2473 / 2066 | 1 of 3 |
+| 10% | 0.1764 / 0.1735 / 0.1640 | 0.0124 | 1738 / 2433 / 2484 | 1 of 3 |
+
+The spread *within* a single visibility level is roughly as large as any difference
+*between* levels. At 25% the draws span 0.0482 PR-AUC — several times the arm C over arm B
+lift the project reports as its headline. The one conclusive point of the original curve,
+25% being decisively worse than no graph, was that subsample and not that visibility level.
+
+One thing survives and one does not. **The direction survives:** 8 of 9 partial-graph draws
+land below the no-graph floor of 0.1815, so a randomly degraded graph is on the whole not
+better than no graph at all. **The ordering does not.** Mean PR-AUC across draws runs 0.1518
+at 50% visible, 0.1697 at 25% and 0.1713 at 10% — *more* of the graph visible produces the
+*worse* mean. No mechanism produces that shape. What it reports is that at three draws per
+condition the draw dominates the condition, which is the same conclusion arrived at from the
+other side.
+
+## The reasoning error, which is the part worth keeping
+
+Before the replicate existed I argued the shape was corroborated by an *independent*
+measurement: best-iteration collapsed exactly where PR-AUC did. It is not independent. Both
+come from the same training run on the same sampled graph, so if that draw produced
+misleading features both numbers move together by construction. I was double-counting one
+observation and it made a single-draw result feel replicated.
+
+The replicate confirmed the objection precisely: at 25% the second draw moved PR-AUC to
+0.1904 *and* best-iteration to 2,066 — both flipping together.
+
+**Independence is a property of the sampling, not of the metric.** Two statistics from one
+fitted model are one draw, however different they look and however good the mechanism story
+connecting them is.
+
+## What is reported
+
+The README carries this as a **Limitations** bullet, not a section: it is a finding about
+the dataset, and it substantiates a caveat the project was already asserting — that full
+inter-bank visibility is a synthetic-data luxury. The claim it supports is narrow and holds:
+*which* edges you see swamps *how many*. The paired-bootstrap machinery built for this
+stays, because the arm C headline correction is computed with it.
+
+## A verification procedure that silently corrupted what it verified
+
+`docs/DEPLOY.md` documented the demo's self-containment check as: rename `data/` and
+`models/` away, confirm the app still renders, rename them back. Running it for real, the
+rename back did not restore anything.
+
+Importing the app runs `config.py`, which **recreates** `data/` and `models/` as empty
+directories. So by the time `mv data.off data` runs, `data/` exists again — and `mv` moves
+the source *inside* the destination. The tree ends up at `data/data.off/processed/`, and
+nothing errors.
+
+The next test run then reported **`64 passed, 43 skipped`** and exited 0. Every
+data-dependent test had skipped itself with `run make data first`, which is the correct
+behaviour for a fresh clone and indistinguishable from it here. The suite was green because
+the data was missing.
+
+**A test suite that skips is a test suite that passes.** The check now `rmdir`s the empty
+shells first — `rmdir` refuses a non-empty directory, so it fails loudly if the assumption
+is wrong — and verifies `ls data/processed | wc -l` afterwards rather than trusting the
+`mv`. Same family as the five cache-key bugs: the failure produced a plausible result
+instead of an error.
+
+**Next:** commit, then the demo deploy hand-off.
+
