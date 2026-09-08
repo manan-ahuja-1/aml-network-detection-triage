@@ -92,23 +92,42 @@ make test
 
 ## Publishing
 
-```bash
-# 1. Create an EMPTY public repo on GitHub (no README, no .gitignore, no licence —
-#    anything it adds will conflict with the history you already have).
+**Private first.** The first push is the irreversible one — anything public stays in the
+history whatever you do afterwards. Pushing private costs a minute and makes the
+irreversible step reviewable, on GitHub's own web UI, which is the only place you see the
+repo the way a stranger will.
 
-# 2. Point this repo at it and push.
-git remote add origin https://github.com/<you>/aml-network-triage.git
+```bash
+# 1. Create an EMPTY PRIVATE repo at github.com/new, named
+#    aml-laundering-network-detection. Add no README, no .gitignore, no licence —
+#    anything GitHub creates will conflict with the history you already have.
+
+# 2. Point this repo at it and push. Note `main`, not `--all` or `--mirror`:
+#    those would also push refs/original/, the pre-rewrite backup of the history.
+git remote add origin https://github.com/manan-ahuja-1/aml-laundering-network-detection.git
 git branch -M main
 git push -u origin main
+
+# 3. Read it on GitHub as a stranger would: the README renders; .env, data/, models/,
+#    docs/LEARNING_NOTES.md and PROJECTSep*.md are all absent.
+
+# 4. Settings -> General -> Danger Zone -> Change visibility -> Public.
 ```
 
 Then at **share.streamlit.io** → *New app*:
 
 | Field | Value |
 |---|---|
-| Repository | `<you>/aml-network-triage` |
+| Repository | `manan-ahuja-1/aml-laundering-network-detection` |
 | Branch | `main` |
 | Main file path | `app/streamlit_app.py` |
+| *Advanced settings* → Python version | **3.13** |
+| *Advanced settings* → Secrets | **leave empty** |
+
+**Pin Python 3.13.** The venv here is 3.13.12 and `app/requirements.txt` pins
+`pandas==3.0.5` and `numpy==2.5.2`. If Cloud picks a Python with no wheels for those, pip
+falls back to building from source and the deploy dies in a compiler error that reads like
+a bug in your code and is not one.
 
 Streamlit Cloud finds `app/requirements.txt` automatically because it sits beside the
 entry point. **Do not add any secret** in *Advanced settings → Secrets*; the app needs

@@ -88,3 +88,38 @@ def test_deploy_manifest_matches_the_pinned_versions():
     assert pins, "deploy manifest is empty"
     for pin in pins:
         assert pin in project, f"{pin} disagrees with requirements.txt"
+
+
+def test_every_artifact_the_demo_reads_is_committed():
+    """The deploy invariant: an artifact the demo reads must be an artifact the repo
+    carries.
+
+    WHY THE OTHER TESTS DO NOT COVER THIS
+    -------------------------------------
+    `test_the_demo_renders_without_exceptions` proves the app does not need `data/` or
+    `models/`. It does not prove that everything it DOES need is committed — locally every
+    file is present, so the difference is invisible. And `loaders.py` returns None rather
+    than raising for a missing file, deliberately, so a partially built repo degrades
+    instead of crashing. Combine those two and an artifact that was never `git add`ed
+    produces a deployed page with a silently missing tab and no error anywhere.
+
+    So the check is against `git ls-files`, not against the filesystem.
+    """
+    import re
+
+    tracked = subprocess.run(["git", "ls-files", "results/"], cwd=ROOT,
+                             capture_output=True, text=True)
+    if tracked.returncode != 0:
+        pytest.skip("not a git checkout")
+    committed = {Path(line).name for line in tracked.stdout.split()}
+
+    wanted: set[str] = set()
+    for source in (ROOT / "app").glob("*.py"):
+        wanted |= set(re.findall(r'(?:load_json|load_parquet|figure)\(\s*"([^"]+)"',
+                                 source.read_text()))
+    assert wanted, "found no artifact references — has the loader API been renamed?"
+
+    missing = sorted(wanted - committed)
+    assert not missing, (
+        f"the demo reads {missing}, which git is not tracking. On Streamlit Cloud those "
+        f"tabs would render empty with no error. Either commit them or stop reading them.")

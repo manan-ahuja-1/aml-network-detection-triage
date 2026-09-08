@@ -4,6 +4,12 @@ Running record of decisions, measured numbers, and dead ends. Written as we go,
 because the README (Day 10), the limitations section, and the interview story all
 need this detail and it is not reconstructable from memory afterwards.
 
+> **A note on the `§` citations.** References like §A8 or §B7 point at the build plan this
+> project was written against, which is not part of the repository. Nothing is hidden by
+> that — each one is described in the sentence that cites it, so the log reads without it.
+> They are kept because they record *when* a requirement was decided, which is what makes
+> the difference between a design choice and a rationalisation written afterwards.
+
 ---
 
 ## Phase 0 — Environment and scaffold
