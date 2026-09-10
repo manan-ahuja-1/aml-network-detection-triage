@@ -18,24 +18,29 @@ That property is load-bearing and checked:
 ```bash
 make demo                      # runs it locally on http://localhost:8501
 
-# prove it is self-contained — rename away the two gitignored directories it must not need
-mv data _data_off && mv models _models_off
-make demo                      # must still render every tab
-
-# RESTORE CAREFULLY. Importing the app runs config.py, which recreates data/ and models/
-# as empty directories. So `mv _data_off data` does NOT restore — it moves the real
-# directory INSIDE the empty one, leaving data/_data_off/processed/. Nothing errors; the
-# next `make test` just skips 43 tests with "run `make data` first" and passes.
-# rmdir removes the shells only if they are genuinely empty, and refuses loudly if not.
-rmdir data/chroma data/processed data/raw data models
-mv _data_off data && mv _models_off models
-
-ls data/processed | wc -l      # sanity: expect ~49 entries, not 0
+# prove it is self-contained — build a clone, which by definition holds only committed
+# files, and render the app against that. This is exactly what Streamlit Cloud checks out.
+git clone . /tmp/aml-selfcontained
+cd /tmp/aml-selfcontained && "$OLDPWD/.venv/bin/python" - <<'EOF'
+from streamlit.testing.v1 import AppTest
+app = AppTest.from_file("app/streamlit_app.py", default_timeout=300).run()
+assert not app.exception, app.exception
+assert len(app.tabs) == 5, app.tabs
+body = "\n".join(str(m.value) for m in app.markdown)
+assert "not in this checkout" not in body
+print("all 5 tabs render from committed files alone")
+EOF
+cd - && rm -rf /tmp/aml-selfcontained
 ```
 
-**That restore bug is why this block is written out rather than left to memory** — the
-failure is silent in both directions, and a test suite that skips is a test suite that
-passes.
+**This replaced an earlier `mv data _data_off` dance.** That version renamed the two
+directories away and restored them afterwards, but importing the app runs `config.py`,
+which recreates `data/` and `models/` as empty shells — so `mv _data_off data` moved the
+real directory *inside* the empty one and the next `make test` silently skipped 43 tests
+and passed. A clone cannot fail that way, and it tests a stronger property: not merely
+that the app survives without `data/`, but that every artifact it reads is committed at
+the path it reads from. (`tests/test_app.py` compares basenames only, so a file in the
+wrong `results/` subdirectory would pass its guard and fail here.)
 
 `app/requirements.txt` is deliberately **not** the project's `requirements.txt`. It pins
 only `streamlit`, `pandas`, `numpy` and `pyarrow`, because the heavy imports in the
@@ -78,8 +83,14 @@ that way — it is written to you, not to a reviewer.
 **3. The repo is small enough to clone comfortably.**
 
 ```bash
-git count-objects -vH | grep size-pack
-du -sh results/          # the demo's data; expect a few MB, not hundreds
+git count-objects -vH | grep size-pack                  # expect ~1 MiB
+
+# Count only TRACKED results. Plain `du -sh results/` reports ~77M and looks alarming,
+# because the two deliberately-gitignored score caches (curve_scores.parquet ~30 MB,
+# single_bank_scores.parquet ~44 MB) live in that directory and are never pushed. A check
+# that cries wolf on a clean repo is one you learn to click past — the same failure this
+# file warns about for `.env.example` above.
+git ls-files -z results/ | xargs -0 du -ch | tail -1    # expect ~3.8M
 ```
 
 **4. Tests pass.**
@@ -99,12 +110,12 @@ repo the way a stranger will.
 
 ```bash
 # 1. Create an EMPTY PRIVATE repo at github.com/new, named
-#    aml-laundering-network-detection. Add no README, no .gitignore, no licence —
+#    aml-network-detection-triage. Add no README, no .gitignore, no licence —
 #    anything GitHub creates will conflict with the history you already have.
 
 # 2. Point this repo at it and push. Note `main`, not `--all` or `--mirror`:
 #    those would also push refs/original/, the pre-rewrite backup of the history.
-git remote add origin https://github.com/manan-ahuja-1/aml-laundering-network-detection.git
+git remote add origin https://github.com/manan-ahuja-1/aml-network-detection-triage.git
 git branch -M main
 git push -u origin main
 
@@ -118,7 +129,7 @@ Then at **share.streamlit.io** → *New app*:
 
 | Field | Value |
 |---|---|
-| Repository | `manan-ahuja-1/aml-laundering-network-detection` |
+| Repository | `manan-ahuja-1/aml-network-detection-triage` |
 | Branch | `main` |
 | Main file path | `app/streamlit_app.py` |
 | *Advanced settings* → Python version | **3.13** |

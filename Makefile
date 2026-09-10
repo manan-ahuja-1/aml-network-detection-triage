@@ -1,4 +1,4 @@
-# AML Laundering-Network Detection & Triage
+# AML Network Detection & Case Triage
 #
 # Every target runs through the project venv explicitly rather than relying on an
 # activated shell, so `make train` behaves identically whether or not you remembered
