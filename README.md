@@ -389,7 +389,7 @@ than a review step.
 
 ## How this was built
 
-This project was written with an AI coding assistant (Claude Code) throughout, in a tight
+This project was written with an AI coding assistant (Claude Code), in a tight
 loop: each step specified and reviewed before the next began. The assistant wrote most of
 the code and much of the prose; the experimental design, the choice of controls, and the
 reading of the results are mine.
