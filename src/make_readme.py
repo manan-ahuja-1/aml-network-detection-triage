@@ -23,7 +23,7 @@ OUT = config.ROOT / "README.md"
 
 # Set this once the app is deployed (see docs/DEPLOY.md) and re-run. Kept here rather
 # than edited into README.md directly so it survives the next regeneration.
-DEMO_URL = ""
+DEMO_URL = "https://aml-network-detection-triage.streamlit.app"
 
 
 def header(f: Fetch) -> str:

@@ -1,6 +1,7 @@
 # AML Network Detection & Case Triage
 
-[Build log](docs/NOTES.md) · [Methodology](docs/METHODOLOGY.md)
+**[▶ Live demo](https://aml-network-detection-triage.streamlit.app)** · [Build
+log](docs/NOTES.md) · [Methodology](docs/METHODOLOGY.md)
 
 Detects money-laundering **networks** in transaction data with graph-derived features on a
 gradient-boosted model, then uses an LLM agent to triage the resulting alerts into cases and
