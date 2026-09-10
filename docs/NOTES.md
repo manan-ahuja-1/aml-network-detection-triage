@@ -1,8 +1,8 @@
 # Build log
 
 Running record of decisions, measured numbers, and dead ends. Written as we go,
-because the README (Day 10), the limitations section, and the interview story all
-need this detail and it is not reconstructable from memory afterwards.
+because the README, the limitations section and the methodology write-up all need
+this detail and it is not reconstructable from memory afterwards.
 
 > **A note on the `§` citations.** References like §A8 or §B7 point at the build plan this
 > project was written against, which is not part of the repository. Nothing is hidden by

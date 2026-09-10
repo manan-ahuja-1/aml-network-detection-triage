@@ -21,7 +21,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from loaders import figure, load_json, load_parquet, renderer  # noqa: E402
 
-st.set_page_config(page_title="AML Detection & Triage", page_icon="🕸️",
+st.set_page_config(page_title="AML Network Detection & Case Triage", page_icon="🕸️",
                    layout="wide", initial_sidebar_state="collapsed")
 
 ENGINE = load_json("engine.json")
@@ -77,7 +77,7 @@ def missing(what: str) -> None:
     st.info(f"`{what}` is not in this checkout — run the pipeline to generate it.")
 
 
-st.title("Laundering-network detection and triage")
+st.title("AML Network Detection & Case Triage")
 st.caption("Transaction monitoring → **alert** → **L1 triage** → L2 investigation → "
            "SAR decision.  The engine is the monitoring layer; the agent is L1 triage.")
 
